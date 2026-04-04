@@ -2,8 +2,15 @@
   publish = "dist"
   command = "npm run build"
 
-# Proxy API to PlayTonight host so https://nutradashboard.v1mobi.com/api/... avoids browser CORS.
-# Keep this block *before* the SPA fallback.
+# Proxy /api → PlayTonight (same-origin from the browser; avoids CORS).
+# Exact path first (most reliable), then wildcard. SPA rule last.
+# Also mirrored in public/_redirects (copied to dist) so publish dir rules are consistent.
+[[redirects]]
+  from = "/api/payment/report/bucket-wise"
+  to = "https://pu.playtonight.fun/api/payment/report/bucket-wise"
+  status = 200
+  force = true
+
 [[redirects]]
   from = "/api/*"
   to = "https://pu.playtonight.fun/api/:splat"

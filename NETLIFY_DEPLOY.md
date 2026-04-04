@@ -31,13 +31,13 @@ Each row includes `productId`, `productName`, `date`, `dsp`, `domain`, `price`, 
    - Sets `VITE_API_REPORT_ENDPOINT=/api/payment/report/bucket-wise` and leaves **`VITE_API_BASE_URL` unset** so the browser calls your dashboard origin + `/api/...`, which Netlify forwards to PlayTonight.
 3. In **Site settings → Environment variables**, add at minimum:
    - `VITE_API_REPORT_ENDPOINT` = `/api/payment/report/bucket-wise` (if not relying on `netlify.toml` `[build.environment]` only)
-   - **Login:** either `VITE_AUTH_LOGIN_URL` (POST JSON `{ "email", "password" }`) or demo-only `VITE_FALLBACK_LOGIN_EMAIL` + `VITE_FALLBACK_LOGIN_PASSWORD` (do not use fallback in production if you have a real auth API).
+   - **Login:** set `VITE_AUTH_LOGIN_URL` to your real auth API (POST JSON `{ "email", "password" }`). For production, **do not** set `VITE_FALLBACK_LOGIN_EMAIL` / `VITE_FALLBACK_LOGIN_PASSWORD` (those are for local `.env` only; see `.env.example`).
 
 ## Local development
 
 ```bash
 cp .env.example .env
-# Edit .env: set VITE_API_REPORT_ENDPOINT and login vars as needed.
+# `.env.example` includes demo fallback login (`admin@gmail.com` / `Admin@123`). Use `VITE_AUTH_LOGIN_URL` for real auth; do not deploy fallback credentials to Netlify.
 npm install
 npm run dev
 ```
@@ -52,3 +52,9 @@ If PlayTonight sends CORS headers for your dashboard origin, you can set:
 `VITE_API_REPORT_ENDPOINT=/api/payment/report/bucket-wise`
 
 Then remove or avoid relying on the `/api` proxy.
+
+## Troubleshooting `API error: 404`
+
+1. **404 on your dashboard URL** (e.g. `https://nutradashboard.v1mobi.com/api/payment/report/bucket-wise?...`): the host is not forwarding `/api` to PlayTonight. This project uses `netlify.toml` **and** `public/_redirects` (copied into `dist`) so `/api/*` proxies to `https://pu.playtonight.fun`. Redeploy after pulling the latest repo. If you use **non-Netlify** hosting, configure the same proxy there or set **`VITE_API_BASE_URL=https://pu.playtonight.fun`** in the build environment (PlayTonight must send CORS headers for your dashboard origin).
+
+2. **404 on pu.playtonight.fun** in the error message: the report path or `date` query may be wrong, or the backend returned no data for that day — confirm the API in a browser or curl.

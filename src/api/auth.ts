@@ -24,7 +24,7 @@ export async function loginWithApi(
     return {
       ok: false,
       message:
-        'Set VITE_AUTH_LOGIN_URL (POST JSON: email, password), or for local-only demo set VITE_FALLBACK_LOGIN_EMAIL and VITE_FALLBACK_LOGIN_PASSWORD in .env — never commit .env.',
+        'Login is not configured. Copy `.env.example` to `.env`, then set either VITE_AUTH_LOGIN_URL (POST JSON: email, password) or VITE_FALLBACK_LOGIN_EMAIL and VITE_FALLBACK_LOGIN_PASSWORD for local demo. Do not commit `.env`.',
     };
   }
 

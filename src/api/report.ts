@@ -18,7 +18,11 @@ export async function fetchBucketWiseReport(date: string): Promise<BucketWiseRep
     },
   });
   if (!response.ok) {
-    throw new Error(`API error: ${response.status} ${response.statusText}`);
+    const hint =
+      response.status === 404
+        ? ' If this URL is on your dashboard domain, /api may not be proxied (check Netlify redirects / public/_redirects). Or set VITE_API_BASE_URL=https://pu.playtonight.fun if the API allows CORS.'
+        : '';
+    throw new Error(`API error: ${response.status} ${response.statusText} — ${url}${hint}`);
   }
   const data: unknown = await response.json();
   return parseReportApiPayload(data);

@@ -1,1 +1,4 @@
-/*    /index.html   200
+# Order matters: first match wins. API proxy must be before the SPA fallback.
+/api/payment/report/bucket-wise  https://pu.playtonight.fun/api/payment/report/bucket-wise  200
+/api/*  https://pu.playtonight.fun/api/:splat  200
+/*  /index.html  200
