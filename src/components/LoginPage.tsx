@@ -1,41 +1,34 @@
 import { useState, FormEvent } from 'react';
-import { loginWithApi } from '../api/auth';
-import { appTitle } from '../config';
+import { AUTH_CREDENTIALS } from '../config';
 
 type LoginPageProps = {
-  onLoginSuccess: () => void;
+  onLoginSuccess: (email: string) => void;
 };
 
 export function LoginPage({ onLoginSuccess }: LoginPageProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
 
-  async function handleSubmit(e: FormEvent) {
+  function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError('');
-    setLoading(true);
-    try {
-      const result = await loginWithApi(email, password);
-      if (result.ok) {
-        sessionStorage.setItem('isAuthenticated', 'true');
-        sessionStorage.setItem('userEmail', email.trim());
-        onLoginSuccess();
-        return;
-      }
-      setError(result.message);
-      setPassword('');
-    } finally {
-      setLoading(false);
+    const trimmed = email.trim();
+    if (trimmed === AUTH_CREDENTIALS.email && password === AUTH_CREDENTIALS.password) {
+      sessionStorage.setItem('isAuthenticated', 'true');
+      sessionStorage.setItem('userEmail', trimmed);
+      onLoginSuccess(trimmed);
+      return;
     }
+    setError('Invalid email or password. Please try again.');
+    setPassword('');
   }
 
   return (
     <div className="login-container">
       <div className="login-box">
-        <h1>{appTitle()}</h1>
-        <form onSubmit={(ev) => void handleSubmit(ev)}>
+        <h1>Nutra Dashboard</h1>
+        <form onSubmit={handleSubmit}>
           <div className="login-form-group">
             <label htmlFor="email">Email ID</label>
             <input
@@ -47,7 +40,6 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
               placeholder="Enter your email"
               value={email}
               onChange={(ev) => setEmail(ev.target.value)}
-              disabled={loading}
             />
           </div>
           <div className="login-form-group">
@@ -61,11 +53,10 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
               placeholder="Enter your password"
               value={password}
               onChange={(ev) => setPassword(ev.target.value)}
-              disabled={loading}
             />
           </div>
-          <button type="submit" className="login-btn" disabled={loading}>
-            {loading ? 'Signing in…' : 'Login'}
+          <button type="submit" className="login-btn">
+            Login
           </button>
           <div className="login-error" role="alert">
             {error}

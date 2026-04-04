@@ -3,7 +3,9 @@ import { collectContactsFromReports } from './contactMerge';
 import { bucketsToHourly24 } from './hourSplit';
 import { groupKeyForRow, mergeProductRows } from './groupReports';
 import { msisdnStringsFromList } from './msisdnExtract';
-import { filterRowsForProduct } from './productFromApi';
+import { productNameMatchesHints } from './matchProduct';
+import type { DashboardProductTabId } from '../config';
+import { DASHBOARD_PRODUCT_TABS } from '../config';
 
 export type DashboardFilters = {
   dspPreset: string;
@@ -36,8 +38,17 @@ function rowMatchesPubId(r: ProductReport, q: string): boolean {
   return pid.includes(t.toLowerCase());
 }
 
-export function uniqueDspsForProduct(data: ProductReport[], productName: string): string[] {
-  const rows = filterRowsForProduct(data, productName);
+export function filterRowsForTab(
+  data: ProductReport[],
+  tab: DashboardProductTabId
+): ProductReport[] {
+  const def = DASHBOARD_PRODUCT_TABS.find((x) => x.id === tab);
+  if (!def) return [];
+  return data.filter((r) => productNameMatchesHints(r.productName, def.nameHints));
+}
+
+export function uniqueDspsForTab(data: ProductReport[], tab: DashboardProductTabId): string[] {
+  const rows = filterRowsForTab(data, tab);
   const set = new Set<string>();
   for (const r of rows) {
     const d = (r.dsp || '').trim();
@@ -46,8 +57,8 @@ export function uniqueDspsForProduct(data: ProductReport[], productName: string)
   return [...set].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
 }
 
-export function uniquePubIdsForProduct(data: ProductReport[], productName: string): string[] {
-  const rows = filterRowsForProduct(data, productName);
+export function uniquePubIdsForTab(data: ProductReport[], tab: DashboardProductTabId): string[] {
+  const rows = filterRowsForTab(data, tab);
   const set = new Set<string>();
   for (const r of rows) {
     const p = pubIdFromRow(r);
@@ -58,14 +69,14 @@ export function uniquePubIdsForProduct(data: ProductReport[], productName: strin
 
 export function buildDashboardModels(
   raw: ProductReport[],
-  productName: string,
+  tab: DashboardProductTabId,
   filters: DashboardFilters
 ): {
   contacts: ContactRow[];
   dspBlocks: DspAnalyticsBlock[];
   hasProductMatch: boolean;
 } {
-  const matched = filterRowsForProduct(raw, productName);
+  const matched = filterRowsForTab(raw, tab);
   if (!matched.length) {
     return { contacts: [], dspBlocks: [], hasProductMatch: false };
   }

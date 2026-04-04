@@ -2,29 +2,13 @@
   publish = "dist"
   command = "npm run build"
 
-# Proxy /api → PlayTonight (same-origin from the browser; avoids CORS).
-# Exact path first (most reliable), then wildcard. SPA rule last.
-# Also mirrored in public/_redirects (copied to dist) so publish dir rules are consistent.
 [[redirects]]
-  from = "/api/payment/report/bucket-wise"
-  to = "https://pu.playtonight.fun/api/payment/report/bucket-wise"
-  status = 200
-  force = true
-
-[[redirects]]
-  from = "/api/*"
-  to = "https://pu.playtonight.fun/api/:splat"
-  status = 200
-  force = true
-
-[[redirects]]
+  # Redirect all routes to index.html for SPA behavior (if needed)
   from = "/*"
   to = "/index.html"
   status = 200
 
 [build.environment]
+  # Node version (not required for static HTML, but good to specify)
   NODE_VERSION = "18"
-  # Leave VITE_API_BASE_URL unset: the app uses window.location.origin (your dashboard URL) + proxy above.
-  VITE_API_REPORT_ENDPOINT = "/api/payment/report/bucket-wise"
-  VITE_APP_TITLE = "Nutra Dashboard"
 

@@ -1,20 +1,31 @@
-/** Visible title on login and dashboard header — set in `.env` as `VITE_APP_TITLE`. */
-export function appTitle(): string {
-  const t = (import.meta.env.VITE_APP_TITLE as string | undefined)?.trim();
-  return t || 'Dashboard';
-}
+export const API_CONFIG = {
+  baseUrl: 'https://pu.playtonight.fun',
+  endpoint: '/api/payment/report/bucket-wise',
+} as const;
 
-/**
- * Max inclusive days per range. Set `VITE_DATE_RANGE_MAX_DAYS` in `.env`.
- * If unset or invalid, defaults to 31.
- */
-export function dateRangeMaxDays(): number {
-  const raw = import.meta.env.VITE_DATE_RANGE_MAX_DAYS;
-  if (raw === undefined || raw === '') return 31;
-  const n = Number(raw);
-  if (!Number.isFinite(n) || n < 1) return 31;
-  return Math.min(Math.floor(n), 366);
-}
+export const AUTH_CREDENTIALS = {
+  email: 'admin@gmail.com',
+  password: 'Admin@123',
+} as const;
+
+/** Max days in one range request (inclusive). */
+export const DATE_RANGE_MAX_DAYS = 31;
+
+/** Product toggles: Ameora first, then PlayTonight (per spec). */
+export const DASHBOARD_PRODUCT_TABS = [
+  {
+    id: 'ameora' as const,
+    label: 'Ameora',
+    nameHints: ['ameora', 'amoora'] as const,
+  },
+  {
+    id: 'playTonight' as const,
+    label: 'PlayTonight',
+    nameHints: ['playtonight', 'play tonight'] as const,
+  },
+] as const;
+
+export type DashboardProductTabId = (typeof DASHBOARD_PRODUCT_TABS)[number]['id'];
 
 export const CONTACT_DETAILS_CONFIG = {
   urlTemplate: (import.meta.env.VITE_CONTACT_DETAILS_URL as string | undefined) ?? '',

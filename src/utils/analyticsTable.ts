@@ -1,4 +1,4 @@
-import type { AnalyticsMetricLabels, Hourly24 } from '../types';
+import type { Hourly24 } from '../types';
 import { HOUR_INDEX_LABELS } from './hourSplit';
 
 export type AnalyticsTableRow = {
@@ -7,36 +7,25 @@ export type AnalyticsTableRow = {
   cells: string[];
 };
 
-const DEFAULT_METRIC_LABELS: Record<
-  keyof Pick<Hourly24, 'clicks' | 'entry' | 'initiated' | 'failed' | 'success'>,
-  string
-> = {
-  clicks: 'Clicks',
-  entry: 'Entry (Mobile No)',
-  initiated: 'Payment Initiated',
-  failed: 'Payment Failed',
-  success: 'Success',
-};
+const METRIC_LABELS = [
+  'Clicks',
+  'Entry (Mobile No)',
+  'Payment Initiated',
+  'Payment Failed',
+  'Success',
+] as const;
 
-const METRIC_ORDER = ['clicks', 'entry', 'initiated', 'failed', 'success'] as const;
-
-function resolvedMetricLabels(overrides?: AnalyticsMetricLabels): string[] {
-  return METRIC_ORDER.map((key) => overrides?.[key] ?? DEFAULT_METRIC_LABELS[key]);
-}
-
-function emptyRows(showHourCells: boolean, labels?: AnalyticsMetricLabels): AnalyticsTableRow[] {
+function emptyRows(showHourCells: boolean): AnalyticsTableRow[] {
   const cells = showHourCells ? HOUR_INDEX_LABELS.map(() => '-') : [];
-  const metricLabels = resolvedMetricLabels(labels);
-  return metricLabels.map((label) => ({ label, total: '-', cells: [...cells] }));
+  return METRIC_LABELS.map((label) => ({ label, total: '-', cells: [...cells] }));
 }
 
 export function buildRowsFromHourly24(
   hourly: Hourly24 | null,
-  showHourlyColumns: boolean,
-  metricLabels?: AnalyticsMetricLabels
+  showHourlyColumns: boolean
 ): AnalyticsTableRow[] {
   if (!hourly) {
-    return emptyRows(showHourlyColumns, metricLabels);
+    return emptyRows(showHourlyColumns);
   }
 
   const series: number[][] = [
@@ -47,9 +36,7 @@ export function buildRowsFromHourly24(
     hourly.success,
   ];
 
-  const labels = resolvedMetricLabels(metricLabels);
-
-  return labels.map((label, idx) => {
+  return METRIC_LABELS.map((label, idx) => {
     const arr = series[idx]!;
     const total = arr.reduce((a, b) => a + b, 0);
     const cells = showHourlyColumns ? arr.map((v) => String(v)) : [];
