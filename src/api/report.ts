@@ -1,12 +1,16 @@
-import { API_CONFIG } from '../config';
 import type { ProductReport } from '../types';
+import { authHeadersForReport, buildReportUrlForDate } from './reportUrl';
 import { normalizeReportArray } from '../utils/normalizeReport';
 
 export async function fetchBucketWiseReport(date: string): Promise<ProductReport[]> {
-  const url = `${API_CONFIG.baseUrl}${API_CONFIG.endpoint}?date=${encodeURIComponent(date)}`;
+  const url = buildReportUrlForDate(date);
   const response = await fetch(url, {
     method: 'GET',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      ...authHeadersForReport(),
+    },
   });
   if (!response.ok) {
     throw new Error(`API error: ${response.status} ${response.statusText}`);

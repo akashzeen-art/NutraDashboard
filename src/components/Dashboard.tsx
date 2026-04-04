@@ -1,18 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { fetchBucketWiseReport } from '../api/report';
 import { fetchContactDetails, mergeContactDetailsFromApi } from '../api/contactDetails';
-import { DASHBOARD_PRODUCT_TABS, DATE_RANGE_MAX_DAYS, type DashboardProductTabId } from '../config';
+import { appTitle, dateRangeMaxDays } from '../config';
 import type { ContactDetails, ContactRow, ProductReport } from '../types';
 import { formatDateDisplay, todayIsoDate } from '../utils/dateFormat';
 import { enumerateInclusiveISODates } from '../utils/dateRange';
 import { downloadAnalyticsCsv, downloadContactsCsv } from '../utils/csvExport';
-import { findProductReportByNameHints } from '../utils/matchProduct';
 import {
   buildDashboardModels,
-  filterRowsForTab,
-  uniqueDspsForTab,
-  uniquePubIdsForTab,
+  uniqueDspsForProduct,
+  uniquePubIdsForProduct,
 } from '../utils/dashboardData';
+import { filterRowsForProduct, uniqueProductNamesFromReports } from '../utils/productFromApi';
 import {
   contactNameDisplay,
   contactRowDedupeKey,
@@ -49,10 +48,11 @@ function dayCount(from: string, to: string): number {
 
 export function Dashboard({ onLogout }: DashboardProps) {
   const today = todayIsoDate();
+  const maxDays = dateRangeMaxDays();
   const [dateFrom, setDateFrom] = useState(today);
   const [dateTo, setDateTo] = useState(today);
   const [apiResponseData, setApiResponseData] = useState<ProductReport[] | null>(null);
-  const [activeTab, setActiveTab] = useState<DashboardProductTabId>('ameora');
+  const [activeProduct, setActiveProduct] = useState('');
   const [dspPreset, setDspPreset] = useState<string>('All');
   const [pubIdQuery, setPubIdQuery] = useState('');
   const [showHourlyColumns, setShowHourlyColumns] = useState(true);
@@ -68,14 +68,35 @@ export function Dashboard({ onLogout }: DashboardProps) {
     [dspPreset, pubIdQuery]
   );
 
+  const productNames = useMemo(
+    () => uniqueProductNamesFromReports(apiResponseData ?? []),
+    [apiResponseData]
+  );
+
+  useEffect(() => {
+    if (apiResponseData === null) {
+      setActiveProduct('');
+      return;
+    }
+    const names = uniqueProductNamesFromReports(apiResponseData);
+    if (!names.length) {
+      setActiveProduct('');
+      return;
+    }
+    setActiveProduct((cur) => {
+      if (cur && names.some((n) => n.toLowerCase() === cur.toLowerCase())) return cur;
+      return names[0]!;
+    });
+  }, [apiResponseData]);
+
   const dspOptions = useMemo(
-    () => ['All', ...uniqueDspsForTab(apiResponseData ?? [], activeTab)],
-    [apiResponseData, activeTab]
+    () => ['All', ...uniqueDspsForProduct(apiResponseData ?? [], activeProduct)],
+    [apiResponseData, activeProduct]
   );
 
   const pubIdSuggestions = useMemo(
-    () => uniquePubIdsForTab(apiResponseData ?? [], activeTab),
-    [apiResponseData, activeTab]
+    () => uniquePubIdsForProduct(apiResponseData ?? [], activeProduct),
+    [apiResponseData, activeProduct]
   );
 
   useEffect(() => {
@@ -85,14 +106,14 @@ export function Dashboard({ onLogout }: DashboardProps) {
   }, [dspOptions, dspPreset]);
 
   const { contacts, dspBlocks, hasProductMatch } = useMemo(
-    () => buildDashboardModels(apiResponseData ?? [], activeTab, filters),
-    [apiResponseData, activeTab, filters]
+    () => buildDashboardModels(apiResponseData ?? [], activeProduct, filters),
+    [apiResponseData, activeProduct, filters]
   );
 
   const productIdForContact = useMemo(() => {
-    const rows = filterRowsForTab(apiResponseData ?? [], activeTab);
+    const rows = filterRowsForProduct(apiResponseData ?? [], activeProduct);
     return rows[0]?.productId ?? null;
-  }, [apiResponseData, activeTab]);
+  }, [apiResponseData, activeProduct]);
 
   const rangeLabel = useMemo(() => {
     if (dateFrom === dateTo) return formatDateDisplay(dateFrom);
@@ -105,39 +126,26 @@ export function Dashboard({ onLogout }: DashboardProps) {
       return;
     }
     const span = dayCount(dateFrom, dateTo);
-    if (span > DATE_RANGE_MAX_DAYS) {
-      window.alert(`Date range cannot exceed ${DATE_RANGE_MAX_DAYS} days.`);
+    if (span > maxDays) {
+      window.alert(`Date range cannot exceed ${maxDays} days.`);
       return;
     }
     setLoading(true);
     try {
-      const dates = enumerateInclusiveISODates(dateFrom, dateTo, DATE_RANGE_MAX_DAYS);
+      const dates = enumerateInclusiveISODates(dateFrom, dateTo, maxDays);
       const chunks = await Promise.all(dates.map((d) => fetchBucketWiseReport(d)));
       const data = chunks.flat();
       setApiResponseData(data);
       allowAutoRefetch.current = true;
-      if (data.length > 0) {
-        setActiveTab((currentTab) => {
-          const hints = DASHBOARD_PRODUCT_TABS.find((t) => t.id === currentTab)?.nameHints;
-          if (hints && findProductReportByNameHints(data, hints)) {
-            return currentTab;
-          }
-          const am = findProductReportByNameHints(data, DASHBOARD_PRODUCT_TABS[0]!.nameHints);
-          const pt = findProductReportByNameHints(data, DASHBOARD_PRODUCT_TABS[1]!.nameHints);
-          if (am) return 'ameora';
-          if (pt) return 'playTonight';
-          return currentTab;
-        });
-      }
     } catch (err) {
       console.error('Error fetching data:', err);
-      window.alert('Error fetching data. Please check the console for details.');
+      window.alert(err instanceof Error ? err.message : 'Error fetching data.');
       setApiResponseData(null);
       allowAutoRefetch.current = false;
     } finally {
       setLoading(false);
     }
-  }, [dateFrom, dateTo]);
+  }, [dateFrom, dateTo, maxDays]);
 
   useEffect(() => {
     if (isFirstRangeEffect.current) {
@@ -153,7 +161,7 @@ export function Dashboard({ onLogout }: DashboardProps) {
     hasProductMatch && dspBlocks.length === 0 && !neverFetched && (apiResponseData?.length ?? 0) > 0;
   const showTables = dspBlocks.length > 0;
 
-  const productNameForExport = dspBlocks[0]?.productName || DASHBOARD_PRODUCT_TABS.find((t) => t.id === activeTab)?.label || 'product';
+  const productNameForExport = dspBlocks[0]?.productName || activeProduct || 'export';
   const exportDatePart = dateRangeFilenamePart(dateFrom, dateTo);
 
   async function handleViewContact(row: ContactRow) {
@@ -175,6 +183,7 @@ export function Dashboard({ onLogout }: DashboardProps) {
   function handleLogout() {
     sessionStorage.removeItem('isAuthenticated');
     sessionStorage.removeItem('userEmail');
+    sessionStorage.removeItem('authToken');
     onLogout();
   }
 
@@ -188,7 +197,7 @@ export function Dashboard({ onLogout }: DashboardProps) {
       ) : null}
 
       <header className="dashboard-header dashboard-header-sticky">
-        <h1>Nutra Dashboard</h1>
+        <h1>{appTitle()}</h1>
         <button type="button" className="logout-btn" onClick={handleLogout}>
           Logout
         </button>
@@ -199,22 +208,25 @@ export function Dashboard({ onLogout }: DashboardProps) {
           <div className="product-buttons product-buttons-with-hint">
             {neverFetched && (
               <p className="no-data">
-                Choose <strong>Ameora</strong> or <strong>PlayTonight</strong>, set the date range, adjust filters if
-                needed, then <strong>Fetch Data</strong>. Changing the range refetches after the first successful load.
+                Set the date range, then <strong>Fetch Data</strong>. Product tabs appear from the API response (
+                <code>productName</code>). Changing the range refetches after the first successful load.
               </p>
             )}
             {!neverFetched && apiResponseData && apiResponseData.length === 0 && (
               <p className="no-products">No rows returned for this date range</p>
             )}
+            {!neverFetched && apiResponseData && apiResponseData.length > 0 && productNames.length === 0 && (
+              <p className="no-products">API rows have no <code>productName</code>; cannot group by product.</p>
+            )}
             <div className="product-buttons-row">
-              {DASHBOARD_PRODUCT_TABS.map((tab) => (
+              {productNames.map((name) => (
                 <button
-                  key={tab.id}
+                  key={name}
                   type="button"
-                  className={`product-btn${activeTab === tab.id ? ' active' : ''}`}
-                  onClick={() => setActiveTab(tab.id)}
+                  className={`product-btn${activeProduct.toLowerCase() === name.toLowerCase() ? ' active' : ''}`}
+                  onClick={() => setActiveProduct(name)}
                 >
-                  {tab.label}
+                  {name}
                 </button>
               ))}
             </div>
@@ -299,7 +311,7 @@ export function Dashboard({ onLogout }: DashboardProps) {
         {showTables && (
           <section className="product-meta-strip" aria-label="Product details">
             <p>
-              <strong>Product focus:</strong> {DASHBOARD_PRODUCT_TABS.find((t) => t.id === activeTab)?.label} —{' '}
+              <strong>Product focus:</strong> {activeProduct || '—'} —{' '}
               <strong>Date range:</strong> {rangeLabel}
             </p>
             <p>
@@ -315,8 +327,8 @@ export function Dashboard({ onLogout }: DashboardProps) {
               <p className="no-data">Fetch data to load contacts for the selected product and filters.</p>
             ) : !hasProductMatch ? (
               <p className="no-data">
-                No API rows match <strong>{DASHBOARD_PRODUCT_TABS.find((t) => t.id === activeTab)?.label}</strong> for
-                this range. Try the other product or different dates.
+                No API rows match product <strong>{activeProduct || '—'}</strong> for this range. Try another product
+                tab or different dates.
               </p>
             ) : filteredOut ? (
               <p className="no-data">No rows match your DSP or Pub ID filters. Widen filters and check again.</p>
