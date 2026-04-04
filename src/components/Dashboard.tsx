@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { fetchBucketWiseReport } from '../api/report';
 import { fetchContactDetails, mergeContactDetailsFromApi } from '../api/contactDetails';
 import { appTitle, dateRangeMaxDays } from '../config';
-import type { ContactDetails, ContactRow, ProductReport } from '../types';
+import type { AnalyticsMetricLabels, ContactDetails, ContactRow, ProductReport } from '../types';
 import { formatDateDisplay, todayIsoDate } from '../utils/dateFormat';
 import { enumerateInclusiveISODates } from '../utils/dateRange';
 import { downloadAnalyticsCsv, downloadContactsCsv } from '../utils/csvExport';
@@ -59,6 +59,7 @@ export function Dashboard({ onLogout }: DashboardProps) {
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [modalDetails, setModalDetails] = useState<ContactDetails | null>(null);
+  const [apiMetricLabels, setApiMetricLabels] = useState<AnalyticsMetricLabels | undefined>(undefined);
 
   const isFirstRangeEffect = useRef(true);
   const allowAutoRefetch = useRef(false);
@@ -120,6 +121,8 @@ export function Dashboard({ onLogout }: DashboardProps) {
     return `${formatDateDisplay(dateFrom)} – ${formatDateDisplay(dateTo)}`;
   }, [dateFrom, dateTo]);
 
+  const entryRowHelpLabel = apiMetricLabels?.entry ?? 'Entry (Mobile No)';
+
   const handleFetch = useCallback(async () => {
     if (!dateFrom || !dateTo) {
       window.alert('Please select a date range');
@@ -134,13 +137,19 @@ export function Dashboard({ onLogout }: DashboardProps) {
     try {
       const dates = enumerateInclusiveISODates(dateFrom, dateTo, maxDays);
       const chunks = await Promise.all(dates.map((d) => fetchBucketWiseReport(d)));
-      const data = chunks.flat();
+      const data = chunks.flatMap((c) => c.reports);
+      const mergedLabels: AnalyticsMetricLabels = {};
+      for (const c of chunks) {
+        if (c.metricLabels) Object.assign(mergedLabels, c.metricLabels);
+      }
+      setApiMetricLabels(Object.keys(mergedLabels).length ? mergedLabels : undefined);
       setApiResponseData(data);
       allowAutoRefetch.current = true;
     } catch (err) {
       console.error('Error fetching data:', err);
       window.alert(err instanceof Error ? err.message : 'Error fetching data.');
       setApiResponseData(null);
+      setApiMetricLabels(undefined);
       allowAutoRefetch.current = false;
     } finally {
       setLoading(false);
@@ -397,8 +406,9 @@ export function Dashboard({ onLogout }: DashboardProps) {
             </p>
             <p className="analytics-sub">
               Metrics and hour buckets come from the API response. Wide ranges (e.g. 12:00–16:00) are split into 24
-              one-hour columns (12–13 … 15–16). Entry (Mobile No) uses <code>msisdnList</code> length, spread by hourly
-              click share when clicks exist.
+              one-hour columns (12–13 … 15–16). The <strong>{entryRowHelpLabel}</strong> row uses{' '}
+              <code>user.msisdnList</code> length from the API, spread by hourly click share when clicks exist. Row
+              titles can be overridden by the API via <code>metricLabels</code> on the response envelope.
             </p>
           </div>
 
@@ -417,6 +427,7 @@ export function Dashboard({ onLogout }: DashboardProps) {
                 <AnalyticsTable
                   hourly={b.hourly}
                   showHourlyColumns={showHourlyColumns}
+                  metricLabels={apiMetricLabels}
                 />
               </div>
             ))
@@ -434,7 +445,9 @@ export function Dashboard({ onLogout }: DashboardProps) {
           <button
             type="button"
             className="download-btn"
-            onClick={() => downloadAnalyticsCsv(dspBlocks, exportDatePart, showHourlyColumns)}
+            onClick={() =>
+              downloadAnalyticsCsv(dspBlocks, exportDatePart, showHourlyColumns, apiMetricLabels)
+            }
           >
             Download Analytics CSV
           </button>

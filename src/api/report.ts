@@ -1,8 +1,13 @@
-import type { ProductReport } from '../types';
+import type { AnalyticsMetricLabels, ProductReport } from '../types';
 import { authHeadersForReport, buildReportUrlForDate } from './reportUrl';
-import { normalizeReportArray } from '../utils/normalizeReport';
+import { parseReportApiPayload } from '../utils/parseReportResponse';
 
-export async function fetchBucketWiseReport(date: string): Promise<ProductReport[]> {
+export type BucketWiseReportFetchResult = {
+  reports: ProductReport[];
+  metricLabels?: AnalyticsMetricLabels;
+};
+
+export async function fetchBucketWiseReport(date: string): Promise<BucketWiseReportFetchResult> {
   const url = buildReportUrlForDate(date);
   const response = await fetch(url, {
     method: 'GET',
@@ -16,5 +21,5 @@ export async function fetchBucketWiseReport(date: string): Promise<ProductReport
     throw new Error(`API error: ${response.status} ${response.statusText}`);
   }
   const data: unknown = await response.json();
-  return normalizeReportArray(data);
+  return parseReportApiPayload(data);
 }

@@ -41,6 +41,11 @@ export type Hourly24 = {
   success: number[];
 };
 
+/** Optional row titles from API envelope (`metricLabels` / `metric_labels`). */
+export type AnalyticsMetricLabelKey = 'clicks' | 'entry' | 'initiated' | 'failed' | 'success';
+
+export type AnalyticsMetricLabels = Partial<Record<AnalyticsMetricLabelKey, string>>;
+
 export type ContactRow = {
   mobile?: string;
   phone?: string;

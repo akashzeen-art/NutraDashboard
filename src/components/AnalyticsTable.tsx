@@ -1,17 +1,19 @@
 import { useMemo } from 'react';
 import { buildRowsFromHourly24, HOUR_INDEX_LABELS } from '../utils/analyticsTable';
-import type { Hourly24 } from '../types';
+import type { AnalyticsMetricLabels, Hourly24 } from '../types';
 
 type AnalyticsTableProps = {
   hourly: Hourly24 | null;
   showHourlyColumns: boolean;
   caption?: string;
+  /** Optional row titles from API (`metricLabels` on report envelope). */
+  metricLabels?: AnalyticsMetricLabels;
 };
 
-export function AnalyticsTable({ hourly, showHourlyColumns, caption }: AnalyticsTableProps) {
+export function AnalyticsTable({ hourly, showHourlyColumns, caption, metricLabels }: AnalyticsTableProps) {
   const rows = useMemo(
-    () => buildRowsFromHourly24(hourly, showHourlyColumns),
-    [hourly, showHourlyColumns]
+    () => buildRowsFromHourly24(hourly, showHourlyColumns, metricLabels),
+    [hourly, showHourlyColumns, metricLabels]
   );
 
   return (
@@ -46,8 +48,8 @@ export function AnalyticsTable({ hourly, showHourlyColumns, caption }: Analytics
             </tr>
           </thead>
           <tbody>
-            {rows.map((row) => (
-              <tr key={row.label}>
+            {rows.map((row, rowIdx) => (
+              <tr key={`${rowIdx}-${row.label}`}>
                 <th className="sticky-col-metric td-metric" scope="row">
                   {row.label}
                 </th>

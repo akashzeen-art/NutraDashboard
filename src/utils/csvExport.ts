@@ -1,6 +1,6 @@
 import { buildRowsFromHourly24, HOUR_INDEX_LABELS } from './analyticsTable';
 import { contactNameDisplay } from './contactMerge';
-import type { ContactRow, DspAnalyticsBlock } from '../types';
+import type { AnalyticsMetricLabels, ContactRow, DspAnalyticsBlock } from '../types';
 
 function escapeCsvCell(value: string | number): string {
   const s = String(value);
@@ -63,7 +63,8 @@ export function downloadContactsCsv(contacts: ContactRow[], productName: string,
 export function downloadAnalyticsCsv(
   blocks: DspAnalyticsBlock[],
   dateRange: string,
-  showHourlyColumns: boolean
+  showHourlyColumns: boolean,
+  metricLabels?: AnalyticsMetricLabels
 ) {
   if (!blocks.length) {
     window.alert('No analytics data available to download');
@@ -76,7 +77,7 @@ export function downloadAnalyticsCsv(
     parts.push(
       escapeCsvCell(`DSP: ${b.dsp} | Domain: ${b.domain} | Product: ${b.productName}`)
     );
-    const rows = buildRowsFromHourly24(b.hourly, showHourlyColumns);
+    const rows = buildRowsFromHourly24(b.hourly, showHourlyColumns, metricLabels);
     const head = [
       'Metric',
       'Total',
