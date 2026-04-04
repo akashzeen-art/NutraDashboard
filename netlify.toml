@@ -1,0 +1,14 @@
+[build]
+  publish = "dist"
+  command = "npm run build"
+
+[[redirects]]
+  # Redirect all routes to index.html for SPA behavior (if needed)
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[build.environment]
+  # Node version (not required for static HTML, but good to specify)
+  NODE_VERSION = "18"
+

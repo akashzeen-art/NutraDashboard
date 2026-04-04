@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nutra Dashboard</title>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="login-container" class="login-container">
+        <div class="login-box">
+            <h1>Nutra Dashboard</h1>
+            <form id="login-form">
+                <div class="login-form-group">
+                    <label for="email">Email ID</label>
+                    <input type="email" id="email" name="email" required autocomplete="email" placeholder="Enter your email">
+                </div>
+                <div class="login-form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" required autocomplete="current-password" placeholder="Enter your password">
+                </div>
+                <button type="submit" class="login-btn">Login</button>
+                <div id="login-error" class="login-error"></div>
+            </form>
+        </div>
+    </div>
+
+    <div id="dashboard-container" class="dashboard-container hidden">
+        <header class="dashboard-header">
+            <h1>Nutra Dashboard</h1>
+            <button class="logout-btn" onclick="logout()">Logout</button>
+        </header>
+
+        <section class="product-selection">
+            <div class="product-buttons">
+                <p class="no-data">Select a date and click "Fetch Data" to load products</p>
+            </div>
+        </section>
+
+        <section class="date-filter">
+            <label for="date-picker">Select Date:</label>
+            <input type="date" id="date-picker" class="date-input">
+            <button class="fetch-btn" id="fetch-data-btn">Fetch Data</button>
+        </section>
+
+        <section class="contact-section">
+            <h2>Registered Contacts</h2>
+            <div class="contact-list-container">
+                <div class="contact-list-header">
+                    <span class="col-mobile">Mobile Number</span>
+                    <span class="col-action">Action</span>
+                </div>
+                <div id="contact-list" class="contact-list">
+                    <p class="no-data">Select a date and click "Fetch Data" to view contacts</p>
+                </div>
+            </div>
+        </section>
+
+        <div id="contact-modal" class="modal">
+            <div class="modal-content">
+                <span class="close-modal">&times;</span>
+                <h2>Contact Details</h2>
+                <div id="contact-details" class="contact-details">
+                </div>
+            </div>
+        </div>
+
+        <section class="analytics-section">
+            <h2>Performance Analytics</h2>
+            <div class="analytics-header">
+                <p><strong>Date:</strong> <span id="analytics-date">-</span></p>
+                <p><strong>DSP Name | Link:</strong> <span id="dsp-name">-</span></p>
+            </div>
+            <div class="table-container">
+                <table id="analytics-table" class="analytics-table">
+                    <thead>
+                        <tr>
+                            <th>Time Slot</th>
+                            <th class="total-column">Total</th>
+                            <th>00:00–04:00</th>
+                            <th>04:00–12:00</th>
+                            <th>12:00–16:00</th>
+                            <th>16:00–20:00</th>
+                            <th>20:00–24:00</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Clicks</td>
+                            <td class="total-column">-</td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td>-</td>
+                        </tr>
+                        <tr>
+                            <td>Entry – Mobile No</td>
+                            <td class="total-column">-</td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td>-</td>
+                        </tr>
+                        <tr>
+                            <td>Payment Initiate</td>
+                            <td class="total-column">-</td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td>-</td>
+                        </tr>
+                        <tr>
+                            <td>Payment Failed</td>
+                            <td class="total-column">-</td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td>-</td>
+                        </tr>
+                        <tr>
+                            <td>Success/Conversion</td>
+                            <td class="total-column">-</td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td>-</td>
+                        </tr>
+                        <tr>
+                            <td>CR%</td>
+                            <td class="total-column">-</td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td>-</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="download-section">
+            <button class="download-btn" id="download-contacts-csv">Download Contacts Excel</button>
+            <button class="download-btn" id="download-analytics-csv">Download Analytics Excel</button>
+        </section>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
