@@ -9,9 +9,11 @@ import { downloadAnalyticsCsv, downloadContactsCsv } from '../utils/csvExport';
 import { findProductReportByNameHints } from '../utils/matchProduct';
 import {
   buildDashboardModels,
+  buildSummary,
   filterRowsForTab,
   uniqueDspsForTab,
   uniquePubIdsForTab,
+  type DashboardSummary,
 } from '../utils/dashboardData';
 import {
   contactNameDisplay,
@@ -62,6 +64,7 @@ export function Dashboard({ onLogout }: DashboardProps) {
 
   const isFirstRangeEffect = useRef(true);
   const allowAutoRefetch = useRef(false);
+  const autoRefreshTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const filters = useMemo(
     () => ({ dspPreset, pubIdQuery }),
@@ -88,6 +91,12 @@ export function Dashboard({ onLogout }: DashboardProps) {
     () => buildDashboardModels(apiResponseData ?? [], activeTab, filters),
     [apiResponseData, activeTab, filters]
   );
+
+  const summary = useMemo<DashboardSummary | null>(() => {
+    if (!apiResponseData) return null;
+    const tabRows = filterRowsForTab(apiResponseData, activeTab);
+    return buildSummary(tabRows);
+  }, [apiResponseData, activeTab]);
 
   const productIdForContact = useMemo(() => {
     const rows = filterRowsForTab(apiResponseData ?? [], activeTab);
@@ -116,6 +125,9 @@ export function Dashboard({ onLogout }: DashboardProps) {
       const data = chunks.flat();
       setApiResponseData(data);
       allowAutoRefetch.current = true;
+      // Start / restart 5-minute auto-refresh
+      if (autoRefreshTimer.current) clearInterval(autoRefreshTimer.current);
+      autoRefreshTimer.current = setInterval(() => void handleFetch(), 5 * 60 * 1000);
       if (data.length > 0) {
         setActiveTab((currentTab) => {
           const hints = DASHBOARD_PRODUCT_TABS.find((t) => t.id === currentTab)?.nameHints;
@@ -147,6 +159,12 @@ export function Dashboard({ onLogout }: DashboardProps) {
     if (!allowAutoRefetch.current) return;
     void handleFetch();
   }, [dateFrom, dateTo, handleFetch]);
+
+  useEffect(() => {
+    return () => {
+      if (autoRefreshTimer.current) clearInterval(autoRefreshTimer.current);
+    };
+  }, []);
 
   const neverFetched = apiResponseData === null;
   const filteredOut =
@@ -377,6 +395,84 @@ export function Dashboard({ onLogout }: DashboardProps) {
 
         <ContactModal open={modalOpen} details={modalDetails} onClose={() => setModalOpen(false)} />
 
+        {summary && (summary.byDsp.length > 0 || summary.byProduct.length > 0) && (
+          <section className="summary-section" aria-label="Conversion summary">
+            <h2>Conversion Summary</h2>
+
+            {/* PayU Gateway total — compare this directly against PayU dashboard */}
+            <div className="payu-gateway-card">
+              <div className="payu-gateway-title">PayU Gateway Total <span className="payu-gateway-hint">(compare this with PayU dashboard)</span></div>
+              <div className="payu-gateway-stats">
+                <div className="payu-stat">
+                  <span className="payu-stat-label">Checkout Initiated</span>
+                  <span className="payu-stat-value">{summary.payuGatewayInitiated}</span>
+                </div>
+                <div className="payu-stat payu-stat-success">
+                  <span className="payu-stat-label">Purchase (Success)</span>
+                  <span className="payu-stat-value">{summary.payuGatewaySuccess}</span>
+                </div>
+              </div>
+              <p className="payu-gateway-note">
+                This is the raw <code>successCount</code> sum from the API across all DSPs.
+                If PayU shows a higher number, the API backend is not recording all successful payments in the hour buckets.
+              </p>
+            </div>
+
+            <div className="summary-grid">
+              {summary.byDsp.map((d) => (
+                <div key={d.dspLabel} className="summary-card">
+                  <h3 className="summary-card-title">{d.dspLabel}</h3>
+                  <table className="summary-table">
+                    <tbody>
+                      <tr><th>Clicks</th><td>{d.clicks}</td></tr>
+                      <tr><th>Checkout Initiated</th><td>{d.initiated}</td></tr>
+                      <tr><th>Purchase (Success)</th><td>{d.success}</td></tr>
+                      <tr className="summary-row-sub"><th>↳ from hour buckets</th><td>{d.hoursSuccess}</td></tr>
+                      <tr className="summary-row-sub"><th>↳ from user list</th><td>{d.msisdnSuccess}</td></tr>
+                      <tr><th>Failure</th><td>{d.failed}</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              ))}
+              <div className="summary-card summary-card-total">
+                <h3 className="summary-card-title">Total</h3>
+                <table className="summary-table">
+                  <tbody>
+                    <tr><th>Checkout Initiated</th><td>{summary.totalInitiated}</td></tr>
+                    <tr><th>Purchase (Success)</th><td>{summary.totalSuccess}</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {summary.byProduct.length > 0 && (
+              <div className="summary-products">
+                <h3>Product Breakdown</h3>
+                <table className="summary-table summary-table-products">
+                  <thead>
+                    <tr>
+                      <th>Product ID</th>
+                      <th>Product Name</th>
+                      <th>Initiated</th>
+                      <th>Success</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {summary.byProduct.map((p) => (
+                      <tr key={p.productId}>
+                        <td>{p.productId}</td>
+                        <td>{p.productName}</td>
+                        <td>{p.initiated}</td>
+                        <td>{p.success}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+        )}
+
         <section className="analytics-section">
           <h2>Performance Analytics</h2>
           <div className="analytics-header analytics-header-compact">
@@ -398,6 +494,8 @@ export function Dashboard({ onLogout }: DashboardProps) {
             dspBlocks.map((b) => (
               <div key={b.key} className="dsp-block">
                 <h3 className="dsp-block-title">
+                  <span className="dsp-product-id">ID: {b.productId}</span>
+                  <span className="dsp-sep">|</span>
                   <strong className="dsp-name">{b.dsp}</strong>
                   <span className="dsp-sep">|</span>
                   <span className="dsp-domain">{b.domain}</span>

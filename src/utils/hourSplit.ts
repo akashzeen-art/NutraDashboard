@@ -74,6 +74,21 @@ function addBucketToAcc(acc: ReturnType<typeof emptyHourlyArrays>, bucket: HourB
   });
 }
 
+/** Ensure each metric array sums exactly to the raw API total across all buckets. */
+function reconcileMetricTotals(
+  acc: ReturnType<typeof emptyHourlyArrays>,
+  buckets: HourBucket[]
+): void {
+  const apiClicks = buckets.reduce((s, b) => s + Number(b.clicks ?? 0), 0);
+  const apiInitiated = buckets.reduce((s, b) => s + Number(b.initiatedCount ?? 0), 0);
+  const apiFailed = buckets.reduce((s, b) => s + Number(b.failureCount ?? 0), 0);
+  const apiSuccess = buckets.reduce((s, b) => s + Number(b.successCount ?? 0), 0);
+  fixSumToTarget(acc.clicks, apiClicks);
+  fixSumToTarget(acc.initiated, apiInitiated);
+  fixSumToTarget(acc.failed, apiFailed);
+  fixSumToTarget(acc.success, apiSuccess);
+}
+
 /** Fix rounding so entry sums to target. */
 function fixSumToTarget(arr: number[], target: number): void {
   let s = arr.reduce((a, b) => a + b, 0);
@@ -98,6 +113,7 @@ export function bucketsToHourly24(buckets: HourBucket[], msisdnCount: number): H
   for (const b of buckets) {
     addBucketToAcc(acc, b);
   }
+  reconcileMetricTotals(acc, buckets);
 
   const totalC = acc.clicks.reduce((a, b) => a + b, 0);
   const n = Math.max(0, Math.round(msisdnCount));

@@ -68,6 +68,7 @@ export type ContactRow = {
 
 export type DspAnalyticsBlock = {
   key: string;
+  productId: number;
   productName: string;
   dsp: string;
   domain: string;

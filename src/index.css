@@ -1076,6 +1076,18 @@ body {
   font-weight: 700;
 }
 
+.dsp-product-id {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
 .dsp-sep {
   color: var(--text-subtle);
   font-weight: 400;
@@ -1298,4 +1310,230 @@ body {
     font-size: 0.75rem;
     min-width: 600px;
   }
+}
+
+/* —— Conversion Summary Section —— */
+.summary-section {
+  padding: 30px;
+  background: var(--bg-surface-2);
+  border-bottom: 1px solid var(--border);
+}
+
+.summary-section h2 {
+  color: var(--text);
+  margin-bottom: 20px;
+  font-size: 1.8rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.summary-section h3 {
+  color: var(--text);
+  margin: 20px 0 12px;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.summary-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+
+.summary-card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 16px 20px;
+  min-width: 200px;
+  flex: 1;
+}
+
+.summary-card-total {
+  border-color: var(--accent-deep);
+  background: rgba(79, 70, 229, 0.12);
+}
+
+.summary-card-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.summary-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.summary-table th {
+  text-align: left;
+  color: var(--text-muted);
+  font-weight: 500;
+  padding: 4px 0;
+  white-space: nowrap;
+  padding-right: 16px;
+}
+
+.summary-table td {
+  text-align: right;
+  color: var(--text);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  padding: 4px 0;
+}
+
+.summary-products {
+  margin-top: 8px;
+}
+
+.summary-table-products {
+  min-width: 400px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.summary-table-products thead {
+  background: var(--gradient-table-head);
+  color: #f1f5f9;
+}
+
+.summary-table-products th {
+  padding: 10px 14px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  text-align: left;
+  color: #f1f5f9;
+  border-right: 1px solid rgba(255,255,255,0.15);
+}
+
+.summary-table-products th:last-child {
+  border-right: none;
+}
+
+.summary-table-products td {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  text-align: left;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.summary-table-products td:last-child {
+  border-right: none;
+}
+
+.summary-table-products tbody tr:nth-child(even) {
+  background: rgba(255,255,255,0.02);
+}
+
+.summary-table-products tbody tr:hover {
+  background: rgba(99, 102, 241, 0.1);
+}
+
+@media (max-width: 768px) {
+  .summary-grid {
+    flex-direction: column;
+  }
+  .summary-card {
+    min-width: unset;
+  }
+}
+
+.summary-row-sub th,
+.summary-row-sub td {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  padding-top: 1px;
+  padding-bottom: 1px;
+}
+
+.summary-row-sub th {
+  padding-left: 10px;
+  font-weight: 400;
+}
+
+/* —— PayU Gateway comparison card —— */
+.payu-gateway-card {
+  background: linear-gradient(135deg, rgba(16,185,129,0.12) 0%, rgba(5,150,105,0.08) 100%);
+  border: 1px solid rgba(16,185,129,0.35);
+  border-radius: var(--radius-sm);
+  padding: 18px 22px;
+  margin-bottom: 20px;
+}
+
+.payu-gateway-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #4ade80;
+  margin-bottom: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.payu-gateway-hint {
+  font-size: 0.78rem;
+  font-weight: 400;
+  color: var(--text-muted);
+  text-transform: none;
+  letter-spacing: 0;
+  margin-left: 6px;
+}
+
+.payu-gateway-stats {
+  display: flex;
+  gap: 32px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.payu-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.payu-stat-label {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.payu-stat-value {
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.payu-stat-success .payu-stat-value {
+  color: #4ade80;
+}
+
+.payu-gateway-note {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+  border-top: 1px solid rgba(16,185,129,0.2);
+  padding-top: 10px;
+  margin-top: 4px;
+}
+
+.payu-gateway-note code {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 0.78em;
+  color: var(--accent);
 }

@@ -10,7 +10,9 @@ export function groupKeyForRow(r: ProductReport): string {
   const dsp = norm(r.dsp).toLowerCase();
   const name = norm(r.productName).toLowerCase();
   const pid = r.productId;
-  return `${pid}|${name}|${dsp}|${domain}`;
+  // Include date so rows from different days are never merged together
+  const date = norm(r.date);
+  return `${pid}|${name}|${dsp}|${domain}|${date}`;
 }
 
 /** Merge buckets that share the same hourTime string by summing metrics. */

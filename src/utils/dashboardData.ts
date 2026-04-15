@@ -12,6 +12,102 @@ export type DashboardFilters = {
   pubIdQuery: string;
 };
 
+/** Map raw API dsp value to a human-readable dashboard label. */
+export function dspDisplayLabel(rawDsp: string | undefined): string {
+  const d = (rawDsp ?? '').trim().toLowerCase();
+  if (d === 'propeller ads' || d === 'propellerads') return 'Meta Ads';
+  if (d === 'inhouse' || d === 'in-house' || d === 'in house') return 'Nutra Inhouse Dashboard';
+  return rawDsp?.trim() || 'PayU';
+}
+
+export type DspSummary = {
+  dspLabel: string;
+  initiated: number;
+  success: number;
+  /** successCount from hours[] — may be lower than PayU if API under-reports */
+  hoursSuccess: number;
+  /** msisdnList entries with status SUCCESS — cross-check against PayU */
+  msisdnSuccess: number;
+  failed: number;
+  clicks: number;
+};
+
+export type ProductSummary = {
+  productId: number;
+  productName: string;
+  initiated: number;
+  success: number;
+};
+
+export type DashboardSummary = {
+  byDsp: DspSummary[];
+  byProduct: ProductSummary[];
+  totalInitiated: number;
+  totalSuccess: number;
+  /** Sum of hours[].successCount across ALL DSPs — this is what PayU gateway counts as sales */
+  payuGatewaySuccess: number;
+  /** Sum of hours[].initiatedCount across ALL DSPs */
+  payuGatewayInitiated: number;
+};
+
+/** Aggregate raw API rows into per-DSP and per-product summary totals (no rounding, direct from API). */
+export function buildSummary(rows: ProductReport[]): DashboardSummary {
+  const dspMap = new Map<string, DspSummary>();
+  const productMap = new Map<number, ProductSummary>();
+
+  for (const r of rows) {
+    const label = dspDisplayLabel(r.dsp);
+    const initiated = (r.hours ?? []).reduce((s, h) => s + Number(h.initiatedCount ?? 0), 0);
+    const hoursSuccess = (r.hours ?? []).reduce((s, h) => s + Number(h.successCount ?? 0), 0);
+    const failed = (r.hours ?? []).reduce((s, h) => s + Number(h.failureCount ?? 0), 0);
+    const clicks = (r.hours ?? []).reduce((s, h) => s + Number(h.clicks ?? 0), 0);
+
+    // Cross-check: count msisdnList entries where status = SUCCESS (any casing)
+    const msisdnSuccess = (r.user?.msisdnList ?? []).filter((m) => {
+      if (typeof m === 'string') return false;
+      const s = String((m as Record<string, unknown>).status ?? '').trim().toLowerCase();
+      return s === 'success' || s === 'completed' || s === 'paid' || s.includes('success');
+    }).length;
+
+    // Use the higher of the two as the displayed success (API hours may under-report)
+    const success = Math.max(hoursSuccess, msisdnSuccess);
+
+    const dspEntry = dspMap.get(label);
+    if (!dspEntry) {
+      dspMap.set(label, { dspLabel: label, initiated, success, hoursSuccess, msisdnSuccess, failed, clicks });
+    } else {
+      dspEntry.initiated += initiated;
+      dspEntry.hoursSuccess += hoursSuccess;
+      dspEntry.msisdnSuccess += msisdnSuccess;
+      dspEntry.success = Math.max(dspEntry.hoursSuccess, dspEntry.msisdnSuccess);
+      dspEntry.failed += failed;
+      dspEntry.clicks += clicks;
+    }
+
+    const prodEntry = productMap.get(r.productId);
+    if (!prodEntry) {
+      productMap.set(r.productId, { productId: r.productId, productName: r.productName, initiated, success });
+    } else {
+      prodEntry.initiated += initiated;
+      prodEntry.success += success;
+    }
+  }
+
+  const byDsp = [...dspMap.values()];
+  const byProduct = [...productMap.values()];
+  const totalInitiated = byDsp.reduce((s, d) => s + d.initiated, 0);
+  const totalSuccess = byDsp.reduce((s, d) => s + d.success, 0);
+  // payuGateway = raw sum of hours[].successCount across ALL rows (no dedup, no max trick)
+  // This is the number PayU's own dashboard counts as "sales"
+  const payuGatewaySuccess = rows.reduce(
+    (s, r) => s + (r.hours ?? []).reduce((a, h) => a + Number(h.successCount ?? 0), 0), 0
+  );
+  const payuGatewayInitiated = rows.reduce(
+    (s, r) => s + (r.hours ?? []).reduce((a, h) => a + Number(h.initiatedCount ?? 0), 0), 0
+  );
+  return { byDsp, byProduct, totalInitiated, totalSuccess, payuGatewaySuccess, payuGatewayInitiated };
+}
+
 function rowMatchesDsp(r: ProductReport, dspPreset: string): boolean {
   if (!dspPreset || dspPreset === 'All') return true;
   const d = (r.dsp || '').trim().toLowerCase();
@@ -98,8 +194,9 @@ export function buildDashboardModels(
     const hourly = bucketsToHourly24(r.hours || [], msisdnList.length);
     return {
       key: groupKeyForRow(r),
+      productId: r.productId,
       productName: r.productName,
-      dsp: r.dsp || '—',
+      dsp: dspDisplayLabel(r.dsp),
       domain: r.domain || r.link || '—',
       hourly,
       msisdnList,

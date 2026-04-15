@@ -94,13 +94,22 @@ export function parseContactsFromUser(user: ProductReport['user'] | undefined): 
   return out;
 }
 
+const STATUS_PRIORITY: Record<string, number> = { success: 3, failed: 2, initiated: 1 };
+
+function statusPriority(status: string): number {
+  return STATUS_PRIORITY[status.toLowerCase()] ?? 0;
+}
+
 function mergeContactRow(into: ContactRow, next: ContactRow): void {
   if (!into.displayName && (next.displayName || next.name)) {
     into.displayName = next.displayName || next.name;
   }
   if (!into.firstName && next.firstName) into.firstName = next.firstName;
   if (!into.lastName && next.lastName) into.lastName = next.lastName;
-  if (!into.status && next.status) into.status = next.status;
+  // Always keep the highest-priority status (Success > Failed > Initiated)
+  if (statusPriority(next.status ?? '') > statusPriority(into.status ?? '')) {
+    into.status = next.status;
+  }
   if (!into.email && next.email) into.email = next.email;
   if (!into.productInfo && next.productInfo) into.productInfo = next.productInfo;
   if (!into.customerDsp && next.customerDsp) into.customerDsp = next.customerDsp;
