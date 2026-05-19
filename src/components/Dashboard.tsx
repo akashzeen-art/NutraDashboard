@@ -24,6 +24,10 @@ import {
 import { ContactModal } from './ContactModal';
 import { AnalyticsTable } from './AnalyticsTable';
 
+const IDLE_TIMEOUT_MS = 15 * 60 * 1000;  // 15 min inactivity before warning
+const WARN_COUNTDOWN_S = 60;              // 60 s to act before auto-logout
+const ACTIVITY_EVENTS = ['mousemove', 'mousedown', 'keydown', 'scroll', 'touchstart'] as const;
+
 type DashboardProps = {
   onLogout: () => void;
 };
@@ -61,10 +65,14 @@ export function Dashboard({ onLogout }: DashboardProps) {
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [modalDetails, setModalDetails] = useState<ContactDetails | null>(null);
+  const [idleWarning, setIdleWarning] = useState(false);
+  const [countdown, setCountdown] = useState(WARN_COUNTDOWN_S);
 
   const isFirstRangeEffect = useRef(true);
   const allowAutoRefetch = useRef(false);
   const autoRefreshTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const countdownTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const filters = useMemo(
     () => ({ dspPreset, pubIdQuery }),
@@ -166,6 +174,42 @@ export function Dashboard({ onLogout }: DashboardProps) {
     };
   }, []);
 
+  // ── Auto-logout on inactivity ──────────────────────────────────────────────
+  const resetIdleTimer = useCallback(() => {
+    // If warning is already showing, dismiss it on activity
+    setIdleWarning(false);
+    setCountdown(WARN_COUNTDOWN_S);
+    if (countdownTimer.current) { clearInterval(countdownTimer.current); countdownTimer.current = null; }
+    if (idleTimer.current) clearTimeout(idleTimer.current);
+    idleTimer.current = setTimeout(() => {
+      setIdleWarning(true);
+      setCountdown(WARN_COUNTDOWN_S);
+      let remaining = WARN_COUNTDOWN_S;
+      countdownTimer.current = setInterval(() => {
+        remaining -= 1;
+        setCountdown(remaining);
+        if (remaining <= 0) {
+          if (countdownTimer.current) clearInterval(countdownTimer.current);
+          sessionStorage.removeItem('isAuthenticated');
+          sessionStorage.removeItem('userEmail');
+          onLogout();
+        }
+      }, 1000);
+    }, IDLE_TIMEOUT_MS);
+  }, [onLogout]);
+
+  useEffect(() => {
+    resetIdleTimer();
+    const handler = () => resetIdleTimer();
+    ACTIVITY_EVENTS.forEach((e) => window.addEventListener(e, handler, { passive: true }));
+    return () => {
+      ACTIVITY_EVENTS.forEach((e) => window.removeEventListener(e, handler));
+      if (idleTimer.current) clearTimeout(idleTimer.current);
+      if (countdownTimer.current) clearInterval(countdownTimer.current);
+    };
+  }, [resetIdleTimer]);
+  // ──────────────────────────────────────────────────────────────────────────
+
   const neverFetched = apiResponseData === null;
   const filteredOut =
     hasProductMatch && dspBlocks.length === 0 && !neverFetched && (apiResponseData?.length ?? 0) > 0;
@@ -204,6 +248,35 @@ export function Dashboard({ onLogout }: DashboardProps) {
           <span className="loading-text">Loading report…</span>
         </div>
       ) : null}
+
+      {idleWarning && (
+        <div className="idle-overlay" role="alertdialog" aria-modal="true" aria-labelledby="idle-title">
+          <div className="idle-modal">
+            <div className="idle-icon">&#9201;</div>
+            <h2 id="idle-title" className="idle-title">Session Expiring</h2>
+            <p className="idle-body">
+              You have been inactive for 15 minutes.<br />
+              You will be logged out in
+            </p>
+            <div className="idle-countdown">{countdown}</div>
+            <p className="idle-seconds">seconds</p>
+            <button
+              type="button"
+              className="idle-stay-btn"
+              onClick={resetIdleTimer}
+            >
+              Stay Logged In
+            </button>
+            <button
+              type="button"
+              className="idle-logout-btn"
+              onClick={handleLogout}
+            >
+              Logout Now
+            </button>
+          </div>
+        </div>
+      )}
 
       <header className="dashboard-header dashboard-header-sticky">
         <h1>Nutra Dashboard</h1>

@@ -14,8 +14,8 @@ const API_CONFIG = {
 
 // Authentication credentials
 const AUTH_CREDENTIALS = {
-    email: 'admin@gmail.com',
-    password: 'Admin@123'
+    email: 'nutra@gmail.com',
+    password: 'Nutra@123'
 };
 
 // Check authentication status

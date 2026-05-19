@@ -4,8 +4,8 @@ export const API_CONFIG = {
 } as const;
 
 export const AUTH_CREDENTIALS = {
-  email: 'admin@gmail.com',
-  password: 'Admin@123',
+  email: 'nutra@gmail.com',
+  password: 'Nutra@123',
 } as const;
 
 /** Max days in one range request (inclusive). */
