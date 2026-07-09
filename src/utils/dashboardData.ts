@@ -163,6 +163,16 @@ export function uniquePubIdsForTab(data: ProductReport[], tab: DashboardProductT
   return [...set].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
 }
 
+/** Distinct productId values from bucket-wise report rows for the active product tab. */
+export function uniqueProductIdsForTab(data: ProductReport[], tab: DashboardProductTabId): number[] {
+  const rows = filterRowsForTab(data, tab);
+  const set = new Set<number>();
+  for (const r of rows) {
+    if (Number.isFinite(r.productId)) set.add(r.productId);
+  }
+  return [...set].sort((a, b) => a - b);
+}
+
 export function buildDashboardModels(
   raw: ProductReport[],
   tab: DashboardProductTabId,

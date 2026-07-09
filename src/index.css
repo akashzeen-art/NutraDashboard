@@ -188,6 +188,68 @@ body {
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
 }
 
+.main-view-nav {
+  display: flex;
+  gap: 0;
+  max-width: 1400px;
+  margin: 0 auto 0;
+  padding: 0;
+  background: var(--bg-surface-2);
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0;
+}
+
+.main-view-tab {
+  flex: 1;
+  padding: 14px 20px;
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  border-bottom: 3px solid transparent;
+  cursor: pointer;
+  transition: color 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+}
+
+.main-view-tab:hover {
+  color: var(--text);
+  background: rgba(99, 102, 241, 0.08);
+}
+
+.main-view-tab.active {
+  color: var(--accent-hover);
+  background: rgba(99, 102, 241, 0.12);
+  border-bottom-color: var(--accent-deep);
+}
+
+.leads-panel {
+  position: relative;
+}
+
+.leads-filters {
+  border-bottom: 1px solid var(--border);
+}
+
+.leads-product-id-select {
+  min-width: 11rem;
+}
+
+.leads-ids-hint {
+  font-size: 0.78rem;
+  color: var(--text-subtle);
+  line-height: 1.3;
+}
+
+.loading-overlay-local {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  border-radius: 0;
+}
+
 .dashboard-container-body {
   border-radius: 0 0 12px 12px;
 }
@@ -460,6 +522,71 @@ body {
   font-size: 1.8rem;
   font-weight: 700;
   letter-spacing: -0.02em;
+}
+
+.leads-section {
+  border-top: 1px solid var(--border);
+}
+
+.leads-section-header {
+  margin-bottom: 16px;
+}
+
+.leads-section-header h2 {
+  margin-bottom: 8px;
+}
+
+.leads-section-meta {
+  font-size: 0.92rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.leads-meta-sep {
+  margin: 0 0.35rem;
+  color: var(--text-subtle);
+}
+
+.leads-error {
+  color: var(--danger-text);
+  font-style: normal;
+}
+
+.leads-table .leads-date-row td {
+  background: rgba(99, 102, 241, 0.12);
+  border-bottom: 1px solid var(--border-strong);
+  padding: 10px 16px;
+  font-weight: 600;
+}
+
+.leads-date-label {
+  color: var(--accent);
+  margin-right: 12px;
+}
+
+.leads-date-count {
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  font-weight: 500;
+}
+
+.leads-td-id,
+.leads-td-time {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.leads-col-click,
+.leads-td-click {
+  max-width: 11rem;
+  font-size: 0.82rem;
+  word-break: break-all;
+}
+
+.leads-col-time,
+.leads-td-time {
+  font-size: 0.88rem;
+  white-space: nowrap;
 }
 
 .contacts-table-wrap {

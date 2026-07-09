@@ -76,6 +76,18 @@ export type DspAnalyticsBlock = {
   msisdnList: string[];
 };
 
+export type FormLeadRecord = {
+  /** API row id when present */
+  id?: number;
+  msisdn: string;
+  name: string | null;
+  dsp: string;
+  productId: number;
+  clickId?: string | null;
+  productName: string | null;
+  createdAt: string;
+};
+
 export type ContactDetails = {
   phone?: string;
   mobile?: string;

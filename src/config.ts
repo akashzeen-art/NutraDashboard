@@ -25,6 +25,11 @@ export const DASHBOARD_PRODUCT_TABS = [
   },
 ] as const;
 
+export const FORM_LEADS_CONFIG = {
+  baseUrl: 'https://playtonight.fun',
+  endpoint: '/api/payment/getformdatabydate',
+} as const;
+
 export type DashboardProductTabId = (typeof DASHBOARD_PRODUCT_TABS)[number]['id'];
 
 export const CONTACT_DETAILS_CONFIG = {

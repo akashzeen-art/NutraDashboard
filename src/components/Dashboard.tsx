@@ -23,6 +23,8 @@ import {
 } from '../utils/contactMerge';
 import { ContactModal } from './ContactModal';
 import { AnalyticsTable } from './AnalyticsTable';
+import { LeadsPanel } from './LeadsPanel';
+import { SectionCard } from './SectionCard';
 
 const IDLE_TIMEOUT_MS = 15 * 60 * 1000;  // 15 min inactivity before warning
 const WARN_COUNTDOWN_S = 60;              // 60 s to act before auto-logout
@@ -53,8 +55,21 @@ function dayCount(from: string, to: string): number {
   return Math.floor((hi.getTime() - lo.getTime()) / 86400000) + 1;
 }
 
+function pickTabForData(currentTab: DashboardProductTabId, data: ProductReport[]): DashboardProductTabId {
+  const hints = DASHBOARD_PRODUCT_TABS.find((t) => t.id === currentTab)?.nameHints;
+  if (hints && findProductReportByNameHints(data, hints)) return currentTab;
+  const am = findProductReportByNameHints(data, DASHBOARD_PRODUCT_TABS[0]!.nameHints);
+  const pt = findProductReportByNameHints(data, DASHBOARD_PRODUCT_TABS[1]!.nameHints);
+  if (am) return 'ameora';
+  if (pt) return 'playTonight';
+  return currentTab;
+}
+
+type DashboardView = 'reports' | 'leads';
+
 export function Dashboard({ onLogout }: DashboardProps) {
   const today = todayIsoDate();
+  const [mainView, setMainView] = useState<DashboardView>('reports');
   const [dateFrom, setDateFrom] = useState(today);
   const [dateTo, setDateTo] = useState(today);
   const [apiResponseData, setApiResponseData] = useState<ProductReport[] | null>(null);
@@ -133,21 +148,10 @@ export function Dashboard({ onLogout }: DashboardProps) {
       const data = chunks.flat();
       setApiResponseData(data);
       allowAutoRefetch.current = true;
-      // Start / restart 5-minute auto-refresh
       if (autoRefreshTimer.current) clearInterval(autoRefreshTimer.current);
       autoRefreshTimer.current = setInterval(() => void handleFetch(), 5 * 60 * 1000);
       if (data.length > 0) {
-        setActiveTab((currentTab) => {
-          const hints = DASHBOARD_PRODUCT_TABS.find((t) => t.id === currentTab)?.nameHints;
-          if (hints && findProductReportByNameHints(data, hints)) {
-            return currentTab;
-          }
-          const am = findProductReportByNameHints(data, DASHBOARD_PRODUCT_TABS[0]!.nameHints);
-          const pt = findProductReportByNameHints(data, DASHBOARD_PRODUCT_TABS[1]!.nameHints);
-          if (am) return 'ameora';
-          if (pt) return 'playTonight';
-          return currentTab;
-        });
+        setActiveTab(pickTabForData(activeTab, data));
       }
     } catch (err) {
       console.error('Error fetching data:', err);
@@ -157,7 +161,7 @@ export function Dashboard({ onLogout }: DashboardProps) {
     } finally {
       setLoading(false);
     }
-  }, [dateFrom, dateTo]);
+  }, [dateFrom, dateTo, activeTab]);
 
   useEffect(() => {
     if (isFirstRangeEffect.current) {
@@ -213,7 +217,6 @@ export function Dashboard({ onLogout }: DashboardProps) {
   const neverFetched = apiResponseData === null;
   const filteredOut =
     hasProductMatch && dspBlocks.length === 0 && !neverFetched && (apiResponseData?.length ?? 0) > 0;
-  const showTables = dspBlocks.length > 0;
 
   const productNameForExport = dspBlocks[0]?.productName || DASHBOARD_PRODUCT_TABS.find((t) => t.id === activeTab)?.label || 'product';
   const exportDatePart = dateRangeFilenamePart(dateFrom, dateTo);
@@ -241,8 +244,8 @@ export function Dashboard({ onLogout }: DashboardProps) {
   }
 
   return (
-    <div className="dashboard-page">
-      {loading ? (
+    <div className="app-shell">
+      {loading && mainView === 'reports' ? (
         <div className="loading-overlay" aria-busy="true" aria-live="polite">
           <div className="loading-spinner" />
           <span className="loading-text">Loading report…</span>
@@ -260,345 +263,410 @@ export function Dashboard({ onLogout }: DashboardProps) {
             </p>
             <div className="idle-countdown">{countdown}</div>
             <p className="idle-seconds">seconds</p>
-            <button
-              type="button"
-              className="idle-stay-btn"
-              onClick={resetIdleTimer}
-            >
+            <button type="button" className="idle-stay-btn" onClick={resetIdleTimer}>
               Stay Logged In
             </button>
-            <button
-              type="button"
-              className="idle-logout-btn"
-              onClick={handleLogout}
-            >
+            <button type="button" className="idle-logout-btn" onClick={handleLogout}>
               Logout Now
             </button>
           </div>
         </div>
       )}
 
-      <header className="dashboard-header dashboard-header-sticky">
-        <h1>Nutra Dashboard</h1>
-        <button type="button" className="logout-btn" onClick={handleLogout}>
-          Logout
-        </button>
+      <header className="app-header">
+        <div className="app-header-inner">
+          <div className="app-brand">
+            <span className="app-brand-mark" aria-hidden="true">
+              N
+            </span>
+            <div>
+              <h1>Nutra Dashboard</h1>
+              <p className="app-brand-sub">Performance reports & form leads</p>
+            </div>
+          </div>
+          <button type="button" className="logout-btn" onClick={handleLogout}>
+            Logout
+          </button>
+        </div>
       </header>
 
-      <div className="dashboard-container dashboard-container-body">
-        <section className="product-selection">
-          <div className="product-buttons product-buttons-with-hint">
-            {neverFetched && (
-              <p className="no-data">
-                Choose <strong>Ameora</strong> or <strong>PlayTonight</strong>, set the date range, adjust filters if
-                needed, then <strong>Fetch Data</strong>. Changing the range refetches after the first successful load.
-              </p>
-            )}
-            {!neverFetched && apiResponseData && apiResponseData.length === 0 && (
-              <p className="no-products">No rows returned for this date range</p>
-            )}
-            <div className="product-buttons-row">
-              {DASHBOARD_PRODUCT_TABS.map((tab) => (
-                <button
-                  key={tab.id}
-                  type="button"
-                  className={`product-btn${activeTab === tab.id ? ' active' : ''}`}
-                  onClick={() => setActiveTab(tab.id)}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section className="date-filter date-filter-range">
-          <div className="filter-field">
-            <label htmlFor="date-from">From</label>
-            <input
-              id="date-from"
-              type="date"
-              className="date-input"
-              value={dateFrom}
-              onChange={(e) => setDateFrom(e.target.value)}
-            />
-          </div>
-          <div className="filter-field">
-            <label htmlFor="date-to">To</label>
-            <input
-              id="date-to"
-              type="date"
-              className="date-input"
-              value={dateTo}
-              onChange={(e) => setDateTo(e.target.value)}
-            />
-          </div>
+      <div className="app-frame">
+        <nav className="app-tabs" aria-label="Dashboard views">
           <button
             type="button"
-            className="fetch-btn"
-            disabled={loading}
-            onClick={() => void handleFetch()}
+            className={`app-tab${mainView === 'reports' ? ' active' : ''}`}
+            onClick={() => setMainView('reports')}
           >
-            {loading ? 'Loading…' : 'Fetch Data'}
+            Reports
           </button>
-        </section>
+          <button
+            type="button"
+            className={`app-tab${mainView === 'leads' ? ' active' : ''}`}
+            onClick={() => setMainView('leads')}
+          >
+            Leads
+          </button>
+        </nav>
 
-        <section className="filters-panel" aria-label="Filters">
-          <div className="filter-field">
-            <label htmlFor="dsp-filter">DSP</label>
-            <select
-              id="dsp-filter"
-              className="filter-select"
-              value={dspOptions.includes(dspPreset) ? dspPreset : 'All'}
-              onChange={(e) => setDspPreset(e.target.value)}
-            >
-              {dspOptions.map((p) => (
-                <option key={p} value={p}>
-                  {p}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="filter-field filter-field-grow">
-            <label htmlFor="pub-id">Pub ID</label>
-            <input
-              id="pub-id"
-              type="text"
-              className="date-input filter-text"
-              placeholder="Filter by Pub ID"
-              list="pub-id-suggestions"
-              autoComplete="off"
-              value={pubIdQuery}
-              onChange={(e) => setPubIdQuery(e.target.value)}
-            />
-            <datalist id="pub-id-suggestions">
-              {pubIdSuggestions.map((id) => (
-                <option key={id} value={id} />
-              ))}
-            </datalist>
-          </div>
-          <label className="toggle-hourly">
-            <input
-              type="checkbox"
-              checked={showHourlyColumns}
-              onChange={(e) => setShowHourlyColumns(e.target.checked)}
-            />
-            Hour detail (24 columns)
-          </label>
-        </section>
-
-        {showTables && (
-          <section className="product-meta-strip" aria-label="Product details">
-            <p>
-              <strong>Product focus:</strong> {DASHBOARD_PRODUCT_TABS.find((t) => t.id === activeTab)?.label} —{' '}
-              <strong>Date range:</strong> {rangeLabel}
-            </p>
-            <p>
-              <strong>DSP groups:</strong> {dspBlocks.length}
-            </p>
-          </section>
-        )}
-
-        <section className="contact-section">
-          <h2>Registered Contacts</h2>
-          <div className="contacts-table-wrap">
-            {neverFetched ? (
-              <p className="no-data">Fetch data to load contacts for the selected product and filters.</p>
-            ) : !hasProductMatch ? (
-              <p className="no-data">
-                No API rows match <strong>{DASHBOARD_PRODUCT_TABS.find((t) => t.id === activeTab)?.label}</strong> for
-                this range. Try the other product or different dates.
-              </p>
-            ) : filteredOut ? (
-              <p className="no-data">No rows match your DSP or Pub ID filters. Widen filters and check again.</p>
-            ) : !contacts.length ? (
-              <p className="no-data">No contacts (msisdn list empty) for this selection.</p>
-            ) : (
-              <div className="contacts-table-scroll">
-                <table className="contacts-table">
-                  <thead>
-                    <tr>
-                      <th scope="col">Mobile number</th>
-                      <th scope="col">Name</th>
-                      <th scope="col">Status</th>
-                      <th scope="col" className="contacts-col-meta">
-                        Product info
-                      </th>
-                      <th scope="col">DSP</th>
-                      <th scope="col" className="contacts-col-domain">
-                        Domain
-                      </th>
-                      <th scope="col" className="contacts-th-action">
-                        Details
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {contacts.map((c) => {
-                      const m = c.mobile || c.phone || '';
-                      const statusLabel = contactStatusDisplay(c);
-                      return (
-                        <tr key={contactRowDedupeKey(c)}>
-                          <td className="contacts-td-mobile">{m || '—'}</td>
-                          <td>{contactNameDisplay(c)}</td>
-                          <td>
-                            <span className={contactStatusClass(statusLabel)}>{statusLabel}</span>
-                          </td>
-                          <td className="contacts-td-meta">{c.productInfo?.trim() || '—'}</td>
-                          <td>{c.customerDsp?.trim() || '—'}</td>
-                          <td className="contacts-td-domain">{c.lineDomain?.trim() || '—'}</td>
-                          <td className="contacts-td-action">
-                            <button
-                              type="button"
-                              className="view-btn view-btn-compact"
-                              onClick={() => void handleViewContact(c)}
-                            >
-                              View
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        </section>
-
-        <ContactModal open={modalOpen} details={modalDetails} onClose={() => setModalOpen(false)} />
-
-        {summary && (summary.byDsp.length > 0 || summary.byProduct.length > 0) && (
-          <section className="summary-section" aria-label="Conversion summary">
-            <h2>Conversion Summary</h2>
-
-            {/* PayU Gateway total — compare this directly against PayU dashboard */}
-            <div className="payu-gateway-card">
-              <div className="payu-gateway-title">PayU Gateway Total <span className="payu-gateway-hint">(compare this with PayU dashboard)</span></div>
-              <div className="payu-gateway-stats">
-                <div className="payu-stat">
-                  <span className="payu-stat-label">Checkout Initiated</span>
-                  <span className="payu-stat-value">{summary.payuGatewayInitiated}</span>
-                </div>
-                <div className="payu-stat payu-stat-success">
-                  <span className="payu-stat-label">Purchase (Success)</span>
-                  <span className="payu-stat-value">{summary.payuGatewaySuccess}</span>
-                </div>
-              </div>
-              <p className="payu-gateway-note">
-                This is the raw <code>successCount</code> sum from the API across all DSPs.
-                If PayU shows a higher number, the API backend is not recording all successful payments in the hour buckets.
-              </p>
-            </div>
-
-            <div className="summary-grid">
-              {summary.byDsp.map((d) => (
-                <div key={d.dspLabel} className="summary-card">
-                  <h3 className="summary-card-title">{d.dspLabel}</h3>
-                  <table className="summary-table">
-                    <tbody>
-                      <tr><th>Clicks</th><td>{d.clicks}</td></tr>
-                      <tr><th>Checkout Initiated</th><td>{d.initiated}</td></tr>
-                      <tr><th>Purchase (Success)</th><td>{d.success}</td></tr>
-                      <tr className="summary-row-sub"><th>↳ from hour buckets</th><td>{d.hoursSuccess}</td></tr>
-                      <tr className="summary-row-sub"><th>↳ from user list</th><td>{d.msisdnSuccess}</td></tr>
-                      <tr><th>Failure</th><td>{d.failed}</td></tr>
-                    </tbody>
-                  </table>
-                </div>
-              ))}
-              <div className="summary-card summary-card-total">
-                <h3 className="summary-card-title">Total</h3>
-                <table className="summary-table">
-                  <tbody>
-                    <tr><th>Checkout Initiated</th><td>{summary.totalInitiated}</td></tr>
-                    <tr><th>Purchase (Success)</th><td>{summary.totalSuccess}</td></tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {summary.byProduct.length > 0 && (
-              <div className="summary-products">
-                <h3>Product Breakdown</h3>
-                <table className="summary-table summary-table-products">
-                  <thead>
-                    <tr>
-                      <th>Product ID</th>
-                      <th>Product Name</th>
-                      <th>Initiated</th>
-                      <th>Success</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {summary.byProduct.map((p) => (
-                      <tr key={p.productId}>
-                        <td>{p.productId}</td>
-                        <td>{p.productName}</td>
-                        <td>{p.initiated}</td>
-                        <td>{p.success}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </section>
-        )}
-
-        <section className="analytics-section">
-          <h2>Performance Analytics</h2>
-          <div className="analytics-header analytics-header-compact">
-            <p>
-              <strong>Date:</strong> <span>{rangeLabel}</span>
-            </p>
-            <p className="analytics-sub">
-              Metrics and hour buckets come from the API response. Wide ranges (e.g. 12:00–16:00) are split into 24
-              one-hour columns (12–13 … 15–16). Entry (Mobile No) uses <code>msisdnList</code> length, spread by hourly
-              click share when clicks exist.
-            </p>
-          </div>
-
-          {!neverFetched && !hasProductMatch ? (
-            <p className="no-data analytics-empty">No analytics — select a product that exists in the API response.</p>
-          ) : filteredOut ? (
-            <p className="no-data analytics-empty">No analytics — adjust DSP / Pub ID filters.</p>
+        <main className="app-main">
+          {mainView === 'leads' ? (
+            <LeadsPanel />
           ) : (
-            dspBlocks.map((b) => (
-              <div key={b.key} className="dsp-block">
-                <h3 className="dsp-block-title">
-                  <span className="dsp-product-id">ID: {b.productId}</span>
-                  <span className="dsp-sep">|</span>
-                  <strong className="dsp-name">{b.dsp}</strong>
-                  <span className="dsp-sep">|</span>
-                  <span className="dsp-domain">{b.domain}</span>
-                </h3>
-                <AnalyticsTable
-                  hourly={b.hourly}
-                  showHourlyColumns={showHourlyColumns}
-                />
-              </div>
-            ))
-          )}
-        </section>
+            <>
+              <div className="dash-toolbar">
+                {neverFetched ? (
+                  <p className="dash-toolbar-hint">
+                    Choose a product, set the date range, adjust filters, then <strong>Fetch Data</strong>.
+                    The range auto-refetches after the first successful load.
+                  </p>
+                ) : null}
+                {!neverFetched && apiResponseData?.length === 0 ? (
+                  <p className="dash-toolbar-hint">No rows returned for this date range.</p>
+                ) : null}
 
-        <section className="download-section">
-          <button
-            type="button"
-            className="download-btn"
-            onClick={() => downloadContactsCsv(contacts, productNameForExport, exportDatePart)}
-          >
-            Download Contacts CSV
-          </button>
-          <button
-            type="button"
-            className="download-btn"
-            onClick={() => downloadAnalyticsCsv(dspBlocks, exportDatePart, showHourlyColumns)}
-          >
-            Download Analytics CSV
-          </button>
-        </section>
+                <div className="dash-toolbar-row dash-toolbar-row--center">
+                  {DASHBOARD_PRODUCT_TABS.map((tab) => (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      className={`product-btn${activeTab === tab.id ? ' active' : ''}`}
+                      onClick={() => setActiveTab(tab.id)}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="dash-toolbar-row">
+                  <div className="filter-field">
+                    <label htmlFor="date-from">From</label>
+                    <input
+                      id="date-from"
+                      type="date"
+                      className="date-input"
+                      value={dateFrom}
+                      onChange={(e) => setDateFrom(e.target.value)}
+                    />
+                  </div>
+                  <div className="filter-field">
+                    <label htmlFor="date-to">To</label>
+                    <input
+                      id="date-to"
+                      type="date"
+                      className="date-input"
+                      value={dateTo}
+                      onChange={(e) => setDateTo(e.target.value)}
+                    />
+                  </div>
+                  <div className="dash-toolbar-actions">
+                    <button
+                      type="button"
+                      className="fetch-btn"
+                      disabled={loading}
+                      onClick={() => void handleFetch()}
+                    >
+                      {loading ? 'Loading…' : 'Fetch Data'}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="dash-toolbar-row dash-toolbar-row--filters">
+                  <div className="filter-field">
+                    <label htmlFor="dsp-filter">DSP</label>
+                    <select
+                      id="dsp-filter"
+                      className="filter-select"
+                      value={dspOptions.includes(dspPreset) ? dspPreset : 'All'}
+                      onChange={(e) => setDspPreset(e.target.value)}
+                    >
+                      {dspOptions.map((p) => (
+                        <option key={p} value={p}>
+                          {p}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="filter-field filter-field-grow">
+                    <label htmlFor="pub-id">Pub ID</label>
+                    <input
+                      id="pub-id"
+                      type="text"
+                      className="date-input filter-text"
+                      placeholder="Filter by Pub ID"
+                      list="pub-id-suggestions"
+                      autoComplete="off"
+                      value={pubIdQuery}
+                      onChange={(e) => setPubIdQuery(e.target.value)}
+                    />
+                    <datalist id="pub-id-suggestions">
+                      {pubIdSuggestions.map((id) => (
+                        <option key={id} value={id} />
+                      ))}
+                    </datalist>
+                  </div>
+                  <label className="toggle-hourly filter-field">
+                    <span className="toggle-hourly-label">Hourly</span>
+                    <span className="toggle-hourly-inner">
+                      <input
+                        type="checkbox"
+                        checked={showHourlyColumns}
+                        onChange={(e) => setShowHourlyColumns(e.target.checked)}
+                      />
+                      24 hour columns
+                    </span>
+                  </label>
+                </div>
+              </div>
+
+              {!neverFetched && hasProductMatch && !filteredOut ? (
+                <div className="kpi-strip" aria-label="Summary">
+                  <div className="kpi-card">
+                    <span className="kpi-label">Product</span>
+                    <span className="kpi-value">
+                      {DASHBOARD_PRODUCT_TABS.find((t) => t.id === activeTab)?.label}
+                    </span>
+                  </div>
+                  <div className="kpi-card">
+                    <span className="kpi-label">Date range</span>
+                    <span className="kpi-value">{rangeLabel}</span>
+                  </div>
+                  <div className="kpi-card">
+                    <span className="kpi-label">Contacts</span>
+                    <span className="kpi-value">{contacts.length}</span>
+                  </div>
+                  <div className="kpi-card">
+                    <span className="kpi-label">DSP groups</span>
+                    <span className="kpi-value">{dspBlocks.length}</span>
+                  </div>
+                </div>
+              ) : null}
+
+              <SectionCard
+                title="Registered Contacts"
+                badge={contacts.length || null}
+                subtitle="Customers from msisdnList on the bucket-wise report"
+              >
+                {neverFetched ? (
+                  <p className="empty-state">Fetch data to load contacts for the selected product and filters.</p>
+                ) : !hasProductMatch ? (
+                  <p className="empty-state">
+                    No API rows match <strong>{DASHBOARD_PRODUCT_TABS.find((t) => t.id === activeTab)?.label}</strong>{' '}
+                    for this range. Try the other product or different dates.
+                  </p>
+                ) : filteredOut ? (
+                  <p className="empty-state">No rows match your DSP or Pub ID filters. Widen filters and try again.</p>
+                ) : !contacts.length ? (
+                  <p className="empty-state">No contacts in msisdnList for this selection.</p>
+                ) : (
+                  <div className="contacts-table-wrap">
+                    <div className="contacts-table-scroll">
+                      <table className="contacts-table">
+                        <thead>
+                          <tr>
+                            <th scope="col">Mobile</th>
+                            <th scope="col">Name</th>
+                            <th scope="col">Status</th>
+                            <th scope="col" className="contacts-col-meta">
+                              Product info
+                            </th>
+                            <th scope="col">DSP</th>
+                            <th scope="col" className="contacts-col-domain">
+                              Domain
+                            </th>
+                            <th scope="col" className="contacts-th-action">
+                              Details
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {contacts.map((c) => {
+                            const m = c.mobile || c.phone || '';
+                            const statusLabel = contactStatusDisplay(c);
+                            return (
+                              <tr key={contactRowDedupeKey(c)}>
+                                <td className="contacts-td-mobile">{m || '—'}</td>
+                                <td>{contactNameDisplay(c)}</td>
+                                <td>
+                                  <span className={contactStatusClass(statusLabel)}>{statusLabel}</span>
+                                </td>
+                                <td className="contacts-td-meta">{c.productInfo?.trim() || '—'}</td>
+                                <td>{c.customerDsp?.trim() || '—'}</td>
+                                <td className="contacts-td-domain">{c.lineDomain?.trim() || '—'}</td>
+                                <td className="contacts-td-action">
+                                  <button
+                                    type="button"
+                                    className="view-btn view-btn-compact"
+                                    onClick={() => void handleViewContact(c)}
+                                  >
+                                    View
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </SectionCard>
+
+              {summary && (summary.byDsp.length > 0 || summary.byProduct.length > 0) ? (
+                <SectionCard
+                  title="Conversion Summary"
+                  subtitle="Checkout and purchase totals from hour buckets and contact lists"
+                  className="section-card--muted"
+                >
+                  <div className="payu-gateway-card">
+                    <div className="payu-gateway-title">
+                      PayU Gateway Total{' '}
+                      <span className="payu-gateway-hint">(compare with PayU dashboard)</span>
+                    </div>
+                    <div className="payu-gateway-stats">
+                      <div className="payu-stat">
+                        <span className="payu-stat-label">Checkout Initiated</span>
+                        <span className="payu-stat-value">{summary.payuGatewayInitiated}</span>
+                      </div>
+                      <div className="payu-stat payu-stat-success">
+                        <span className="payu-stat-label">Purchase (Success)</span>
+                        <span className="payu-stat-value">{summary.payuGatewaySuccess}</span>
+                      </div>
+                    </div>
+                    <p className="payu-gateway-note">
+                      Raw <code>successCount</code> sum from the API across all DSPs. If PayU shows a higher
+                      number, the backend may not record all successful payments in hour buckets.
+                    </p>
+                  </div>
+
+                  <div className="summary-grid">
+                    {summary.byDsp.map((d) => (
+                      <div key={d.dspLabel} className="summary-card">
+                        <h3 className="summary-card-title">{d.dspLabel}</h3>
+                        <table className="summary-table">
+                          <tbody>
+                            <tr>
+                              <th>Clicks</th>
+                              <td>{d.clicks}</td>
+                            </tr>
+                            <tr>
+                              <th>Checkout Initiated</th>
+                              <td>{d.initiated}</td>
+                            </tr>
+                            <tr>
+                              <th>Purchase (Success)</th>
+                              <td>{d.success}</td>
+                            </tr>
+                            <tr className="summary-row-sub">
+                              <th>↳ from hour buckets</th>
+                              <td>{d.hoursSuccess}</td>
+                            </tr>
+                            <tr className="summary-row-sub">
+                              <th>↳ from user list</th>
+                              <td>{d.msisdnSuccess}</td>
+                            </tr>
+                            <tr>
+                              <th>Failure</th>
+                              <td>{d.failed}</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    ))}
+                    <div className="summary-card summary-card-total">
+                      <h3 className="summary-card-title">Total</h3>
+                      <table className="summary-table">
+                        <tbody>
+                          <tr>
+                            <th>Checkout Initiated</th>
+                            <td>{summary.totalInitiated}</td>
+                          </tr>
+                          <tr>
+                            <th>Purchase (Success)</th>
+                            <td>{summary.totalSuccess}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  {summary.byProduct.length > 0 ? (
+                    <div className="summary-products">
+                      <h3>Product breakdown</h3>
+                      <div className="contacts-table-wrap">
+                        <table className="contacts-table summary-table-products">
+                          <thead>
+                            <tr>
+                              <th>Product ID</th>
+                              <th>Product name</th>
+                              <th>Initiated</th>
+                              <th>Success</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {summary.byProduct.map((p) => (
+                              <tr key={p.productId}>
+                                <td>{p.productId}</td>
+                                <td>{p.productName}</td>
+                                <td>{p.initiated}</td>
+                                <td>{p.success}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  ) : null}
+                </SectionCard>
+              ) : null}
+
+              <SectionCard
+                title="Performance Analytics"
+                subtitle={`Hour buckets for ${rangeLabel}. Wide API ranges split into 24 one-hour columns.`}
+              >
+                {!neverFetched && !hasProductMatch ? (
+                  <p className="empty-state">No analytics — select a product that exists in the API response.</p>
+                ) : filteredOut ? (
+                  <p className="empty-state">No analytics — adjust DSP or Pub ID filters.</p>
+                ) : !dspBlocks.length ? (
+                  <p className="empty-state">Fetch data to view performance analytics.</p>
+                ) : (
+                  dspBlocks.map((b) => (
+                    <div key={b.key} className="dsp-block">
+                      <h3 className="dsp-block-title">
+                        <span className="dsp-product-id">ID {b.productId}</span>
+                        <span className="dsp-sep">|</span>
+                        <strong className="dsp-name">{b.dsp}</strong>
+                        <span className="dsp-sep">|</span>
+                        <span className="dsp-domain">{b.domain}</span>
+                      </h3>
+                      <AnalyticsTable hourly={b.hourly} showHourlyColumns={showHourlyColumns} />
+                    </div>
+                  ))
+                )}
+              </SectionCard>
+
+              <div className="download-bar">
+                <button
+                  type="button"
+                  className="download-btn"
+                  onClick={() => downloadContactsCsv(contacts, productNameForExport, exportDatePart)}
+                >
+                  Download Contacts CSV
+                </button>
+                <button
+                  type="button"
+                  className="download-btn"
+                  onClick={() => downloadAnalyticsCsv(dspBlocks, exportDatePart, showHourlyColumns)}
+                >
+                  Download Analytics CSV
+                </button>
+              </div>
+            </>
+          )}
+        </main>
       </div>
+
+      <ContactModal open={modalOpen} details={modalDetails} onClose={() => setModalOpen(false)} />
     </div>
   );
 }

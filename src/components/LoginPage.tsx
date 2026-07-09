@@ -28,6 +28,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
     <div className="login-container">
       <div className="login-box">
         <h1>Nutra Dashboard</h1>
+        <p className="login-tagline">Performance reports & form leads</p>
         <form onSubmit={handleSubmit}>
           <div className="login-form-group">
             <label htmlFor="email">Email ID</label>
