@@ -32,6 +32,16 @@ export const FORM_LEADS_CONFIG = {
 
 export type DashboardProductTabId = (typeof DASHBOARD_PRODUCT_TABS)[number]['id'];
 
+/** Product IDs not returned by bucket-wise report but available for leads fetch. */
+export const LEADS_HARDCODED_PRODUCT_IDS: Record<DashboardProductTabId, readonly number[]> = {
+  ameora: [],
+  playTonight: [1061],
+};
+
+export function hardcodedLeadsProductIds(tab: DashboardProductTabId): number[] {
+  return [...LEADS_HARDCODED_PRODUCT_IDS[tab]];
+}
+
 export const CONTACT_DETAILS_CONFIG = {
   urlTemplate: (import.meta.env.VITE_CONTACT_DETAILS_URL as string | undefined) ?? '',
 } as const;

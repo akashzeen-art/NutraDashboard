@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { fetchFormLeadsByDate } from '../api/formLeads';
 import { fetchBucketWiseReport } from '../api/report';
-import { DASHBOARD_PRODUCT_TABS, DATE_RANGE_MAX_DAYS, type DashboardProductTabId } from '../config';
+import { DASHBOARD_PRODUCT_TABS, DATE_RANGE_MAX_DAYS, hardcodedLeadsProductIds, type DashboardProductTabId } from '../config';
 import type { FormLeadRecord, ProductReport } from '../types';
 import { uniqueProductIdsForTab } from '../utils/dashboardData';
 import { formatDateDisplay, todayIsoDate } from '../utils/dateFormat';
@@ -45,8 +45,14 @@ export function LeadsPanel() {
         ? filterLeadsForTab(rawLeads, activeProductTab, reportData ?? [])
         : [];
     const fromLeads = uniqueLeadProductIds(tabLeadsForIds);
-    return [...new Set([...fromReport, ...fromLeads])].sort((a, b) => a - b);
+    const hardcoded = hardcodedLeadsProductIds(activeProductTab);
+    return [...new Set([...fromReport, ...fromLeads, ...hardcoded])].sort((a, b) => a - b);
   }, [reportData, activeProductTab, rawLeads]);
+
+  const extraProductIds = useMemo(
+    () => hardcodedLeadsProductIds(activeProductTab),
+    [activeProductTab]
+  );
 
   const displayedLeads = useMemo(() => {
     if (!rawLeads) return null;
@@ -202,6 +208,7 @@ export function LeadsPanel() {
                 {productIdOptions.map((id) => (
                   <option key={id} value={String(id)}>
                     {id}
+                    {extraProductIds.includes(id) ? ' (manual)' : ''}
                   </option>
                 ))}
               </select>
@@ -222,6 +229,25 @@ export function LeadsPanel() {
             </div>
           </div>
 
+          {extraProductIds.length > 0 ? (
+            <div className="leads-extra-ids" role="group" aria-label="Manual product IDs">
+              <span className="leads-extra-ids-label">Manual IDs (not in report API)</span>
+              <div className="leads-extra-ids-row">
+                {extraProductIds.map((id) => (
+                  <button
+                    key={id}
+                    type="button"
+                    className={`leads-id-btn${productIdFilter === String(id) ? ' active' : ''}`}
+                    onClick={() => setProductIdFilter(String(id))}
+                    aria-pressed={productIdFilter === String(id)}
+                  >
+                    ID {id}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
           <p
             className={`leads-filter-meta${idsError ? ' leads-filter-meta--error' : ''}`}
             role="status"
@@ -233,7 +259,9 @@ export function LeadsPanel() {
                 ? idsError
                 : reportData && !productIdOptions.length
                   ? 'No product IDs in bucket-wise report for this product and date range.'
-                  : 'Product IDs loaded from bucket-wise report API'}
+                  : extraProductIds.length
+                    ? `Product IDs from bucket-wise report API. Manual IDs: ${extraProductIds.join(', ')}.`
+                    : 'Product IDs loaded from bucket-wise report API'}
           </p>
         </div>
       </div>

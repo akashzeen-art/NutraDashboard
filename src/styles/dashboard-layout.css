@@ -489,6 +489,57 @@ body {
   color: var(--danger-text);
 }
 
+.leads-extra-ids {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  max-width: 920px;
+  margin-inline: auto;
+}
+
+.leads-extra-ids-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-subtle);
+}
+
+.leads-extra-ids-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-2);
+}
+
+.leads-id-btn {
+  padding: 8px 18px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  color: var(--accent);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.leads-id-btn:hover {
+  background: rgba(99, 102, 241, 0.15);
+  border-color: var(--accent-deep);
+  color: var(--accent-hover);
+}
+
+.leads-id-btn.active {
+  background: var(--gradient-btn);
+  border-color: transparent;
+  color: #fff;
+  box-shadow: 0 4px 16px rgba(124, 58, 237, 0.3);
+}
+
 .loading-overlay-local {
   position: absolute;
   inset: 0;

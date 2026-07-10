@@ -1,4 +1,4 @@
-import { DASHBOARD_PRODUCT_TABS, type DashboardProductTabId } from '../config';
+import { DASHBOARD_PRODUCT_TABS, hardcodedLeadsProductIds, type DashboardProductTabId } from '../config';
 import type { FormLeadRecord, ProductReport } from '../types';
 import { filterRowsForTab } from './dashboardData';
 import { productNameMatchesHints } from './matchProduct';
@@ -12,8 +12,12 @@ export function filterLeadsForTab(
   if (!def) return leads;
 
   const tabProductIds = new Set(filterRowsForTab(reports, tab).map((r) => r.productId));
+  const hardcodedIds = new Set(hardcodedLeadsProductIds(tab));
 
   return leads.filter((lead) => {
+    if (hardcodedIds.has(lead.productId)) {
+      return true;
+    }
     if (lead.productName && productNameMatchesHints(lead.productName, def.nameHints)) {
       return true;
     }
