@@ -589,6 +589,32 @@ body {
   white-space: nowrap;
 }
 
+.leads-td-mode {
+  text-transform: uppercase;
+  font-weight: 600;
+  font-size: 0.85rem;
+  letter-spacing: 0.03em;
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+.leads-td-qty {
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.leads-col-address,
+.leads-td-address {
+  min-width: 14rem;
+  max-width: 28rem;
+  font-size: 0.88rem;
+  line-height: 1.4;
+  white-space: normal;
+  word-break: break-word;
+  color: var(--text-muted);
+}
+
 .contacts-table-wrap {
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);

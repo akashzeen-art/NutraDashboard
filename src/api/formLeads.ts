@@ -32,6 +32,9 @@ export function normalizeFormLead(raw: unknown): FormLeadRecord | null {
     clickId: str(r.clickId ?? r.click_id),
     productName: r.productName == null ? null : str(r.productName ?? r.product_name),
     createdAt,
+    mode: str(r.mode ?? r.paymentMode ?? r.payment_mode),
+    qty: str(r.qty ?? r.quantity),
+    address: str(r.address ?? r.fullAddress ?? r.full_address),
   };
 }
 

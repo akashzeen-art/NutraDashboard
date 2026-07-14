@@ -86,6 +86,10 @@ export type FormLeadRecord = {
   clickId?: string | null;
   productName: string | null;
   createdAt: string;
+  /** Payment / delivery mode from form API (e.g. cod) */
+  mode: string | null;
+  qty: string | null;
+  address: string | null;
 };
 
 export type ContactDetails = {

@@ -14,6 +14,8 @@ type LeadsSectionProps = {
   error: string | null;
 };
 
+const LEADS_COL_COUNT = 9;
+
 function dash(v: string | number | null | undefined): string {
   if (v === undefined || v === null) return '—';
   const s = String(v).trim();
@@ -46,7 +48,9 @@ export function LeadsSection({
       subtitle={subtitle}
     >
       {neverFetched ? (
-        <p className="empty-state">Set filters above and click <strong>Fetch Leads</strong>.</p>
+        <p className="empty-state">
+          Set filters above and click <strong>Fetch Leads</strong>.
+        </p>
       ) : loading && !leads ? (
         <p className="empty-state">Loading leads…</p>
       ) : error ? (
@@ -64,6 +68,11 @@ export function LeadsSection({
                   <th scope="col">Name</th>
                   <th scope="col">DSP</th>
                   <th scope="col">Product name</th>
+                  <th scope="col">Mode</th>
+                  <th scope="col">Qty</th>
+                  <th scope="col" className="leads-col-address">
+                    Address
+                  </th>
                   <th scope="col" className="leads-col-time">
                     Created at
                   </th>
@@ -73,7 +82,7 @@ export function LeadsSection({
                 {groups.map((group) => (
                   <Fragment key={group.date}>
                     <tr className="leads-date-row">
-                      <td colSpan={6}>
+                      <td colSpan={LEADS_COL_COUNT}>
                         <span className="leads-date-label">{formatDateDisplay(group.date)}</span>
                         <span className="leads-date-count">{group.rows.length} record(s)</span>
                       </td>
@@ -87,7 +96,14 @@ export function LeadsSection({
                           <td>{displayLeadName(lead.name)}</td>
                           <td>{dash(lead.dsp)}</td>
                           <td>{dash(lead.productName)}</td>
-                          <td className="leads-td-time">{formatDateTimeDisplay(lead.createdAt)}</td>
+                          <td className="leads-td-mode">{dash(lead.mode)}</td>
+                          <td className="leads-td-qty">{dash(lead.qty)}</td>
+                          <td className="leads-td-address" title={lead.address ?? undefined}>
+                            {dash(lead.address)}
+                          </td>
+                          <td className="leads-td-time">
+                            {lead.createdAt ? formatDateTimeDisplay(lead.createdAt) : '—'}
+                          </td>
                         </tr>
                       );
                     })}
